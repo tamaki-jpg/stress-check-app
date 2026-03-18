@@ -1,16 +1,25 @@
-# React + Vite
+# ストレスチェックアプリ (Stress Check App)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+厚労省「職業性ストレス簡易調査票（57項目版）」に準拠した、企業向けのストレスチェックWebアプリケーションです。
 
-Currently, two official plugins are available:
+## 技術スタック
+- **バックエンド**: Python, Flask, SQLite3
+- **フロントエンド**: HTML, Vanilla CSS, Vanilla JS
+- **デザインテーマ**: ヘルスケア・ミントグリーン（こころの耳風）
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 主な機能
+- 従業員向けの57項目のアンケート回答（スマホ対応・レスポンシブ）
+- 回答データのSQLite保存
+- 管理者画面へのログイン・OTP（ワンタイムパスワード）認証
+- 管理者画面からの回答済みデータ一覧表示とCSVダウンロード
 
-## React Compiler
+## 起動方法
+```bash
+# 必要なライブラリのインストール
+pip install -r requirements.txt
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+# サーバーの起動
+python app.py
+```
+起動後、ブラウザで `http://127.0.0.1:5000` にアクセスしてください。
+管理者画面は `http://127.0.0.1:5000/admin` からアクセス可能です。
