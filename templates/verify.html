@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>認証コード入力 | ストレスチェック</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Noto Sans JP', sans-serif;
+      background: #faf8f5;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .card {
+      background: #fff;
+      border-radius: 20px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+      width: 100%;
+      max-width: 420px;
+      overflow: hidden;
+    }
+    .card-header {
+      background: #ffffff;
+      border-bottom: 3px solid #54b3a4;
+      padding: 28px 32px 24px;
+      text-align: center;
+    }
+    .card-header .badge {
+      display: inline-block;
+      background: rgba(84, 179, 164, 0.08);
+      border: 1px solid rgba(84, 179, 164, 0.2);
+      border-radius: 20px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #54b3a4;
+      padding: 3px 12px;
+      margin-bottom: 10px;
+    }
+    .card-header h1 { font-size: 18px; font-weight: 700; color: #4a5568; }
+    .card-header .sub { font-size: 11px; color: #54b3a4; font-weight: 600; margin-top: 6px; }
+    .card-body { padding: 32px; }
+    .info-box {
+      background: #f4fbf9;
+      border: 1px solid rgba(84, 179, 164, 0.2);
+      border-radius: 12px;
+      padding: 14px 16px;
+      font-size: 13px;
+      color: #38b2ac;
+      margin-bottom: 24px;
+      line-height: 1.65;
+    }
+    .info-box .mail { font-weight: 700; font-size: 14px; }
+    .error-box {
+      background: #fff5f5;
+      border: 1px solid #fc8181;
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 13px;
+      color: #c53030;
+      margin-bottom: 20px;
+    }
+    .form-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: #4a5568;
+      margin-bottom: 10px;
+    }
+    /* OTP入力：大きく見やすく */
+    .otp-input {
+      width: 100%;
+      background: #f9fafb;
+      border: 2px solid #d1d9e0;
+      border-radius: 10px;
+      color: #1a202c;
+      font-family: monospace;
+      font-size: 32px;
+      font-weight: 700;
+      padding: 16px;
+      text-align: center;
+      letter-spacing: 12px;
+      transition: all 0.2s;
+      appearance: none;
+    }
+    .otp-input:focus {
+      outline: none;
+      border-color: #54b3a4;
+      background: #fff;
+      box-shadow: 0 0 0 3px rgba(84, 179, 164, 0.15);
+    }
+    .btn-verify {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, #54b3a4 0%, #38b2ac 100%);
+      border: none;
+      border-radius: 24px;
+      color: #fff;
+      font-family: 'Noto Sans JP', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 0.5px;
+      transition: all 0.25s;
+      margin-top: 20px;
+    }
+    .btn-verify:hover {
+      filter: brightness(1.05);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 16px rgba(84, 179, 164, 0.3);
+    }
+    .back-link {
+      display: block;
+      text-align: center;
+      margin-top: 18px;
+      font-size: 12px;
+      color: #9aa5b4;
+      text-decoration: none;
+    }
+    .back-link:hover { color: #4a5568; }
+    .expire-note {
+      text-align: center;
+      font-size: 11px;
+      color: #b0bac5;
+      margin-top: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="card-header">
+      <div class="badge">OTP Verification</div>
+      <h1>認証コードを入力</h1>
+      <div class="sub">つばさ社会保険労務士事務所</div>
+    </div>
+    <div class="card-body">
+      <div class="info-box">
+        📧 <span class="mail">{{ email }}</span><br>
+        にワンタイムパスワードを送信しました。<br>メールに記載の6桁のコードを入力してください。
+      </div>
+      {% if error %}
+      <div class="error-box">⚠️ {{ error }}</div>
+      {% endif %}
+      <form method="POST" action="/admin/verify">
+        <label class="form-label" for="otp">ワンタイムパスワード（6桁）</label>
+        <input
+          class="otp-input"
+          type="text"
+          id="otp"
+          name="otp"
+          maxlength="6"
+          pattern="\d{6}"
+          placeholder="000000"
+          inputmode="numeric"
+          autocomplete="one-time-code"
+          required
+          autofocus
+        />
+        <button class="btn-verify" type="submit">認証して管理画面へ →</button>
+      </form>
+      <div class="expire-note">コードの有効期限は送信から10分間です</div>
+      <a class="back-link" href="/admin/login">← 最初からやり直す</a>
+    </div>
+  </div>
+</body>
+</html>

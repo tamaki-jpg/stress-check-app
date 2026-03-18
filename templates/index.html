@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ストレスチェック | 従業員回答ページ</title>
+  <meta name="description" content="厚生労働省のストレスチェック制度に基づく職場のストレス状況確認を行います。" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css?v=2" />
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="site-header">
+    <div class="header-inner">
+      <div class="company-branding">
+        <div class="company-badge">Stress Check System</div>
+        <div class="company-name">株式会社〇〇　ストレスチェック制度</div>
+      </div>
+      <h1 class="site-title">職場のストレスチェック</h1>
+      <p class="subtitle">この調査は、厚生労働省のストレスチェック制度に基づき実施しています。<br>回答内容は個人情報として厳重に管理されます。</p>
+      <div class="partner-badge" style="background: rgba(84, 179, 164, 0.08); border: 1px solid rgba(84, 179, 164, 0.2);">
+        <span class="partner-label" style="color: #54b3a4; font-weight: bold; opacity: 0.9;">実施委託</span>
+        <span class="partner-name" style="color: #54b3a4; font-weight: bold;">つばさ社会保険労務士事務所</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Form -->
+  <main class="container" id="main-content">
+
+    <!-- Progress Bar -->
+    <div class="progress-wrap" id="progress-wrap">
+      <div class="progress-info">
+        <span class="progress-text">回答進捗</span>
+        <span class="progress-fraction"><span class="progress-count" id="answered-count">0</span> <span class="progress-total">/ 57 問</span></span>
+      </div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="progress-bar"></div>
+      </div>
+    </div>
+
+    <form id="stress-form" novalidate>
+
+      <!-- 基本情報 -->
+      <section class="section-card">
+        <h2 class="section-title">基本情報</h2>
+        <p class="section-desc">以下の項目を正確に入力してください。入力内容は事業者には通知されません。</p>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" for="name">氏名<span class="required">*</span></label>
+            <input class="form-input" type="text" id="name" name="name" placeholder="例：山田 太郎" required />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="furigana">フリガナ<span class="required">*</span></label>
+            <input class="form-input" type="text" id="furigana" name="furigana" placeholder="例：ヤマダ タロウ" required />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="birth_date">生年月日<span class="required">*</span></label>
+            <input class="form-input" type="date" id="birth_date" name="birth_date" required />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">性別<span class="required">*</span></label>
+            <div class="radio-group">
+              <label class="radio-label">
+                <input type="radio" name="gender" value="男性" required />
+                <span class="radio-custom"></span>
+                男性
+              </label>
+              <label class="radio-label">
+                <input type="radio" name="gender" value="女性" />
+                <span class="radio-custom"></span>
+                女性
+              </label>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="employee_id">社員ID<span class="required">*</span></label>
+            <input class="form-input" type="text" id="employee_id" name="employee_id"
+              placeholder="例：EMP-001" required />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="workplace_code">職場コード<span class="required">*</span></label>
+            <input class="form-input" type="text" id="workplace_code" name="workplace_code"
+              placeholder="例：WP001" required />
+          </div>
+
+          <div class="form-group form-group-full">
+            <label class="form-label" for="workplace_name">職場名<span class="required">*</span></label>
+            <input class="form-input" type="text" id="workplace_name" name="workplace_name"
+              placeholder="例：開発部 第1チーム" required />
+          </div>
+        </div>
+      </section>
+
+      <!-- 設問エリア -->
+      <div id="questions-container">
+        <!-- JSで生成 -->
+      </div>
+
+      <!-- Submit -->
+      <div class="submit-wrap">
+        <p class="submit-note">全57問に回答したうえで送信してください。</p>
+        <button type="submit" class="btn-submit" id="submit-btn">
+          <span class="btn-text">回答を送信する</span>
+          <span class="btn-arrow">→</span>
+        </button>
+      </div>
+
+    </form>
+
+    <!-- 完了メッセージ -->
+    <div class="success-message" id="success-message">
+      <div class="success-icon">✅</div>
+      <h2>ご回答ありがとうございました</h2>
+      <p>入力内容を正常に保存しました。<br />ブラウザを閉じていただいて構いません。</p>
+      <div class="success-sub" style="color: #54b3a4; background: rgba(84, 179, 164, 0.08); border: 1px solid rgba(84, 179, 164, 0.15);">
+        本調査はつばさ社会保険労務士事務所が厳重に管理します。
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Toast Notification -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ==========================================
+    // 厚労省「職業性ストレス簡易調査票（57項目版）」
+    // ==========================================
+    const questions = [
+      // A群 Q1〜Q17：仕事について
+      '非常にたくさんの仕事をしなければならない',
+      '時間内に仕事が処理しきれない',
+      '一生懸命働かなければならない',
+      'かなり注意を集中する必要がある',
+      '高度の知識や技術が必要なむずかしい仕事だ',
+      '勤務時間中はいつも仕事のことを考えていなければならない',
+      'からだを大変よく使う仕事だ',
+      '自分のペースで仕事ができる',
+      '自分で仕事の順番・やり方を決めることができる',
+      '職場の仕事の方針に自分の意見を反映できる',
+      '自分の技能や知識を仕事で使うことが少ない',
+      '私の部署内で意見のくい違いがある',
+      '私の部署と他の部署とはうまが合わない',
+      '私の職場の雰囲気は友友好である',
+      '私の職場の作業環境（騒音、照明、温度、換気など）はよくない',
+      '仕事の内容は自分にあっている',
+      '働きがいのある仕事だ',
+      // B群 Q18〜Q46：最近1か月間の状態について
+      '活気がわいてくる',
+      '元気がいっぱいだ',
+      '生き生きする',
+      '怒りを感じる',
+      '内心腹立たしい',
+      'イライラしている',
+      'ひどく疲れた',
+      'へとへとだ',
+      'だるい',
+      '気がはりつめている',
+      '不安だ',
+      '落着かない',
+      'ゆううつだ',
+      '何をするのも面倒だ',
+      '物事に集中できない',
+      '気分が晴れない',
+      '仕事が手につかない',
+      '悲しいと感じる',
+      'めまいがする',
+      '体のふしぶしが痛む',
+      '頭が重かったり頭痛がする',
+      '首筋や肩がこる',
+      '腰が痛い',
+      '目が疲れる',
+      '動悸や息切れがする',
+      '胃腸の具合が悪い',
+      '食欲がない',
+      '便秘や下痢をする',
+      'よく眠れない',
+      // C群 Q47〜Q55：周りの方々について
+      '次の人たちはどのくらい気軽に話ができますか？（上司）',
+      '次の人たちはどのくらい気軽に話ができますか？（職場の同僚）',
+      '次の人たちはどのくらい気軽に話ができますか？（配偶者、家族、友人等）',
+      'あなたが困った時、次の人たちはどのくらい頼りになりますか？（上司）',
+      'あなたが困った時、次の人たちはどのくらい頼りになりますか？（職場の同僚）',
+      'あなたが困った時、次の人たちはどのくらい頼りになりますか？（配偶者、家族、友人等）',
+      'あなたの個人的な問題を相談したら、次の人たちはどのくらいきいてくれますか？（上司）',
+      'あなたの個人的な問題を相談したら、次の人たちはどのくらいきいてくれますか？（職場の同僚）',
+      'あなたの個人的な問題を相談したら、次の人たちはどのくらいきいてくれますか？（配偶者、家族、友人等）',
+      // D群 Q56〜Q57：満足度について
+      '仕事に満足だ',
+      '家庭生活に満足だ'
+    ];
+
+    // 57問あることを確認
+    console.assert(questions.length === 57, `設問数エラー: ${questions.length}問`);
+
+    // ==========================================
+    // 設問グループ定義
+    // ==========================================
+    const questionGroups = [
+      {
+        startQ: 1, endQ: 17,
+        title: 'A群　仕事について',
+        description: 'あなたの仕事について、最も当てはまるものをお選びください。',
+        options: ['そうだ', 'まあそうだ', 'ややちがう', 'ちがう'],
+      },
+      {
+        startQ: 18, endQ: 46,
+        title: 'B群　最近1か月間の状態について',
+        description: '最近1ヶ月間に、どのくらいの頻度でこのような状態でしたか。',
+        options: ['ほとんどなかった', 'ときどきあった', 'しばしばあった', 'ほぼいつもあった'],
+      },
+      {
+        startQ: 47, endQ: 55,
+        title: 'C群　周りの方々について',
+        description: 'あなたのまわりの方々について、最も当てはまるものをお選びください。',
+        options: ['非常に', 'かなり', '多少', '全くない'],
+      },
+      {
+        startQ: 56, endQ: 57,
+        title: 'D群　満足度について',
+        description: 'あなたの満足度について、最も当てはまるものをお選びください。',
+        options: ['満足', 'まあ満足', 'やや不満', '不満'],
+      },
+    ];
+
+    // ==========================================
+    // 設問レンダリング
+    // ==========================================
+    const container = document.getElementById('questions-container');
+
+    questions.forEach((qText, idx) => {
+      const qNum = idx + 1;
+
+      // グループヘッダー挿入
+      const group = questionGroups.find(g => g.startQ === qNum);
+      if (group) {
+        const hdr = document.createElement('div');
+        hdr.className = 'question-group-header';
+        hdr.innerHTML = `
+          <div class="group-meta">
+            <div class="group-title">${group.title}</div>
+            <div class="group-desc">${group.description}</div>
+          </div>
+          <div class="group-option-labels">
+            ${group.options.map(o => `<div class="group-opt-label">${o}</div>`).join('')}
+          </div>
+        `;
+        container.appendChild(hdr);
+      }
+
+      const currentGroup = questionGroups.find(g => qNum >= g.startQ && qNum <= g.endQ);
+      const opts = currentGroup ? currentGroup.options : ['そうだ', 'まあそうだ', 'ややちがう', 'ちがう'];
+
+      const item = document.createElement('div');
+      item.className = 'question-item';
+      item.id = `question-${qNum}`;
+
+      item.innerHTML = `
+        <span class="question-number">Q${String(qNum).padStart(2, '0')}</span>
+        <span class="question-text">${qText}</span>
+        <div class="answer-options" role="radiogroup" aria-label="設問${qNum}の回答">
+          ${opts.map((label, i) => {
+            const val = i + 1;
+            return `
+              <div class="answer-option">
+                <input type="radio" name="q${qNum}" id="q${qNum}_${val}" value="${val}" />
+                <label class="answer-circle" for="q${qNum}_${val}">
+                  <span class="circle-num">${val}</span>
+                  <span class="circle-label">${label}</span>
+                </label>
+              </div>`;
+          }).join('')}
+        </div>
+      `;
+      container.appendChild(item);
+    });
+
+    // ==========================================
+    // 進捗バー更新
+    // ==========================================
+    const answeredSet = new Set();
+
+    document.getElementById('questions-container').addEventListener('change', (e) => {
+      if (e.target.type === 'radio' && e.target.name.startsWith('q')) {
+        const qName = e.target.name;
+        const qNum = parseInt(qName.replace('q', ''), 10);
+
+        if (!answeredSet.has(qName)) {
+          answeredSet.add(qName);
+        }
+        document.getElementById('answered-count').textContent = answeredSet.size;
+        const pct = (answeredSet.size / 57) * 100;
+        document.getElementById('progress-bar').style.width = pct + '%';
+
+        // 回答済みスタイル（エラーハイライトを解除）
+        const qItem = document.getElementById(`question-${qNum}`);
+        if (qItem) {
+          qItem.classList.add('answered');
+          qItem.classList.remove('error');
+        }
+      }
+    });
+
+    // ==========================================
+    // Toast通知
+    // ==========================================
+    function showToast(msg, isError = false) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = 'toast' + (isError ? ' error' : ' success');
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 3500);
+    }
+
+    // ==========================================
+    // フォーム送信
+    // ==========================================
+    document.getElementById('stress-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const btn = document.getElementById('submit-btn');
+
+      // --- 基本情報バリデーション ---
+      const name = document.getElementById('name').value.trim();
+      const furigana = document.getElementById('furigana').value.trim();
+      const birth_date = document.getElementById('birth_date').value;
+      const genderEl = document.querySelector('input[name="gender"]:checked');
+      const employee_id = document.getElementById('employee_id').value.trim();
+      const workplace_code = document.getElementById('workplace_code').value.trim();
+      const workplace_name = document.getElementById('workplace_name').value.trim();
+
+      if (!name || !furigana || !birth_date || !genderEl || !employee_id || !workplace_code || !workplace_name) {
+        showToast('⚠️ 基本情報をすべて入力してください', true);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
+
+      // --- 設問バリデーション（全57問・エラーハイライト付き） ---
+      const answers = {};
+      let firstErrorQ = null;
+
+      for (let i = 1; i <= 57; i++) {
+        const checked = document.querySelector(`input[name="q${i}"]:checked`);
+        const qItem = document.getElementById(`question-${i}`);
+        if (!checked) {
+          if (qItem) qItem.classList.add('error');
+          if (!firstErrorQ) firstErrorQ = qItem || null;
+        } else {
+          if (qItem) qItem.classList.remove('error');
+          answers[`q${i}`] = parseInt(checked.value, 10);
+        }
+      }
+
+      if (firstErrorQ) {
+        showToast('⚠️ 未回答の設問があります（赤くなっている項目）', true);
+        firstErrorQ.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+
+      // --- 生年月日フォーマット変換（YYYY-MM-DD → YYYY/MM/DD） ---
+      const birthFormatted = birth_date.replace(/-/g, '/');
+
+      const payload = {
+        name,
+        furigana,
+        birth_date: birthFormatted,
+        gender: genderEl.value,
+        employee_id,
+        workplace_code,
+        workplace_name,
+        ...answers
+      };
+
+      btn.disabled = true;
+      btn.querySelector('.btn-text').textContent = '送信中...';
+
+      try {
+        const res = await fetch('/api/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          document.getElementById('stress-form').style.display = 'none';
+          document.getElementById('progress-wrap').style.display = 'none';
+          document.getElementById('success-message').style.display = 'block';
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        } else {
+          showToast('❌ ' + (data.error || '送信に失敗しました'), true);
+          btn.disabled = false;
+          btn.querySelector('.btn-text').textContent = '回答を送信する';
+        }
+      } catch (err) {
+        showToast('❌ 通信エラーが発生しました。再度お試しください。', true);
+        btn.disabled = false;
+        btn.querySelector('.btn-text').textContent = '回答を送信する';
+      }
+    });
+  </script>
+</body>
+</html>

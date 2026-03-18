@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>管理者ダッシュボード | ストレスチェック</title>
+  <meta name="description" content="ストレスチェック管理者向けダッシュボード。回答データの一覧とCSVダウンロード機能を提供します。" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/style.css?v=2" />
+</head>
+<body>
+
+  <!-- Admin Header -->
+  <header class="admin-header">
+    <div class="admin-title-wrap">
+      <span class="badge">Admin Dashboard</span>
+      <h1>ストレスチェック　管理者画面</h1>
+      <div style="font-size:11px; margin-top:3px;">
+        <span style="color:var(--text-secondary);">株式会社〇〇</span>　／　<span style="color:var(--accent-blue); font-weight:600;">委託：つばさ社会保険労務士事務所</span>
+      </div>
+    </div>
+    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+      <button class="btn-csv" id="refresh-btn" onclick="loadData()">
+        🔄 更新
+      </button>
+      <a href="/api/csv" class="btn-csv" id="csv-btn" download>
+        ⬇ CSV ダウンロード
+      </a>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <div class="admin-container">
+
+    <!-- Stats -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">総回答数</div>
+        <div class="stat-value" id="total-count">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">最終回答日時</div>
+        <div class="stat-value" id="latest-date" style="font-size:16px; padding-top:8px;">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">従業員ページ</div>
+        <div style="margin-top:10px;">
+          <a href="/" target="_blank" style="font-size:13px; color:var(--accent-blue); text-decoration:none; font-weight:600;">
+            回答ページへ →
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="table-wrap">
+      <div class="table-header-row">
+        <span class="table-title">回答一覧</span>
+        <span style="font-size:11px; color:var(--text-muted);" id="updated-at">読み込み中...</span>
+      </div>
+      <div class="table-scroll">
+        <table id="response-table">
+          <thead>
+            <tr>
+              <th>No.</th>
+              <th>氏名</th>
+              <th>フリガナ</th>
+              <th>生年月日</th>
+              <th>性別</th>
+              <th>社員ID</th>
+              <th>職場コード</th>
+              <th>職場名</th>
+              <th>回答日時</th>
+            </tr>
+          </thead>
+          <tbody id="table-body">
+            <!-- JSで挿入 -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    function showToast(msg, isError = false) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = 'toast' + (isError ? ' error' : ' success');
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 3500);
+    }
+
+    async function loadData() {
+      document.getElementById('updated-at').textContent = '読み込み中...';
+      try {
+        const res = await fetch('/api/responses');
+        if (!res.ok) throw new Error('Failed to fetch');
+        const data = await res.json();
+
+        const tbody = document.getElementById('table-body');
+        const totalEl = document.getElementById('total-count');
+        const latestEl = document.getElementById('latest-date');
+        const updatedAtEl = document.getElementById('updated-at');
+
+        totalEl.textContent = data.length;
+
+        if (data.length === 0) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="9">
+                <div class="empty-state">
+                  <div class="empty-state-icon">📭</div>
+                  まだ回答データがありません
+                </div>
+              </td>
+            </tr>
+          `;
+          latestEl.textContent = '—';
+          latestEl.style.fontSize = '';
+        } else {
+          latestEl.textContent = data[0].submitted_at || '—';
+          latestEl.style.fontSize = '13px';
+          latestEl.style.paddingTop = '10px';
+
+          tbody.innerHTML = data.map((row, idx) => {
+            const genderClass = row.gender === '男性' ? 'male' : 'female';
+            return `
+              <tr>
+                <td style="color:var(--text-muted); font-size:12px;">${data.length - idx}</td>
+                <td><strong>${escapeHtml(row.name)}</strong></td>
+                <td style="color:var(--text-secondary);">${escapeHtml(row.furigana)}</td>
+                <td>${escapeHtml(row.birth_date)}</td>
+                <td><span class="badge-gender ${genderClass}">${escapeHtml(row.gender)}</span></td>
+                <td style="font-family:monospace; font-size:12px; color:var(--accent-blue);">${escapeHtml(row.employee_id)}</td>
+                <td style="font-family:monospace; font-size:12px;">${escapeHtml(row.workplace_code)}</td>
+                <td>${escapeHtml(row.workplace_name)}</td>
+                <td style="color:var(--text-muted); font-size:12px;">${escapeHtml(row.submitted_at)}</td>
+              </tr>
+            `;
+          }).join('');
+        }
+
+        const now = new Date();
+        updatedAtEl.textContent = `最終更新: ${now.toLocaleTimeString('ja-JP')}`;
+      } catch (err) {
+        showToast('❌ データの読み込みに失敗しました（サーバーが起動していないかもしれません）', true);
+        document.getElementById('updated-at').textContent = '読み込みエラー';
+      }
+    }
+
+    function escapeHtml(str) {
+      if (str == null) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    loadData();
+    setInterval(loadData, 30000);
+  </script>
+</body>
+</html>
