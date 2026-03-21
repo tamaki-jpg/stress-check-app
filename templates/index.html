@@ -103,6 +103,11 @@
       align-items: stretch;
       background: #1c4f7d;
       color: white;
+      /* プログレスバーの下にスクロールに追従して固定 */
+      position: sticky;
+      top: 52px;   /* #sticky-progress の高さ分だけ下に */
+      z-index: 50;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.25);
     }
     .group-label-cell {
       flex: 1;
