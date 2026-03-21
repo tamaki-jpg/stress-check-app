@@ -53,7 +53,7 @@
       border-radius: 10px;
       box-shadow: 0 2px 12px rgba(0,0,0,0.07);
       margin-bottom: 24px;
-      overflow: hidden;
+      /* overflow: hidden を外す → これがあると position:sticky が効かない */
     }
     .section-title-bar {
       background: #1c4f7d;
@@ -64,6 +64,8 @@
       display: flex;
       align-items: center;
       gap: 10px;
+      /* section-card の角丸を引き継ぐ */
+      border-radius: 10px 10px 0 0;
     }
     .section-title-bar::before {
       content: "";
