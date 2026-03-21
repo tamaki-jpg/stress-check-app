@@ -1,286 +1,332 @@
-import sqlite3
-import csv
-import io
 import os
-import random
-import smtplib
-import time
-from datetime import datetime
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from flask import Flask, request, jsonify, render_template, Response, g, session, redirect, url_for
+import json
+import sqlite3
+import datetime
+import io
+import csv
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session, make_response
 
 app = Flask(__name__)
+# セッション（結果画面へのデータ受け渡し）を使うための暗号化キー
+app.secret_key = 'stress_check_super_secret_key'
 
-# ============================================================
-# 設定
-# ============================================================
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATABASE = os.path.join(BASE_DIR, 'stress_check.db')
-
-# セッション用シークレットキー（変更しても問題なし）
-app.secret_key = 'tsubasa-stress-check-secret-2024'
-
-# 管理者認証情報
-ADMIN_EMAIL    = 'tamaki@sr-tsubasa.com'
-ADMIN_PASSWORD = 'tamatsuba'
-
-# ============================================================
-# SMTP設定（メール送信用）
-# ご利用のメールサービスに合わせて変更してください
-# ============================================================
-SMTP_HOST = 'smtp.gmail.com'      # GmailはSMTPホスト名
-SMTP_PORT = 587                   # TLS用ポート
-SMTP_USER = 'tamaki@sr-tsubasa.com'   # 送信元アドレス（変更してください）
-SMTP_PASS = 'inlrwcvlkhzbchoe'    # アプリパスワード（設定済み）
-SMTP_FROM_NAME = 'つばさ社会保険労務士事務所'
-
-# OTP保存（メモリ内）: { email: {'otp': '123456', 'expires': timestamp} }
-_otp_store: dict = {}
-OTP_EXPIRE_SECONDS = 600  # 10分
-
-# ============================================================
-# DB ヘルパー
-# ============================================================
-def get_db():
-    db = getattr(g, '_database', None)
-    if db is None:
-        db = g._database = sqlite3.connect(DATABASE)
-        db.row_factory = sqlite3.Row
-    return db
-
-@app.teardown_appcontext
-def close_connection(exception):
-    db = getattr(g, '_database', None)
-    if db is not None:
-        db.close()
+# ==========================================
+# データベース(SQLite)の初期設定
+# ==========================================
+DB_NAME = 'database.db'
 
 def init_db():
-    q_columns = ', '.join([f'q{i} INTEGER' for i in range(1, 58)])
-    with sqlite3.connect(DATABASE) as conn:
-        conn.execute(f'''
-            CREATE TABLE IF NOT EXISTS responses (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                furigana TEXT NOT NULL,
-                birth_date TEXT NOT NULL,
-                gender TEXT NOT NULL,
-                employee_id TEXT NOT NULL,
-                workplace_code TEXT NOT NULL,
-                workplace_name TEXT NOT NULL,
-                {q_columns},
-                submitted_at TEXT NOT NULL
-            )
-        ''')
-        conn.commit()
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    # 職場（組織図）テーブル
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS workplaces (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            code TEXT NOT NULL,
+            name TEXT NOT NULL,
+            level INTEGER NOT NULL
+        )
+    ''')
+    # 回答結果テーブル（回答内容は扱いやすいようにJSONで丸ごと保存）
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS responses (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            employee_id TEXT NOT NULL,
+            name TEXT NOT NULL,
+            workplace_name TEXT,
+            is_high_stress BOOLEAN,
+            answers_json TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    conn.commit()
+    conn.close()
 
-# ============================================================
-# OTP ヘルパー
-# ============================================================
-def generate_otp() -> str:
-    return f'{random.randint(0, 999999):06d}'
+# アプリ起動時にDBを作成
+init_db()
 
-def save_otp(email: str, otp: str):
-    _otp_store[email] = {
-        'otp': otp,
-        'expires': time.time() + OTP_EXPIRE_SECONDS
+def get_db_connection():
+    conn = sqlite3.connect(DB_NAME)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+# ==========================================
+# ストレスチェック 判定 ＆ 詳細スコア計算ロジック
+# ==========================================
+def analyze_stress(answers):
+    # 1. 素点計算（高いほどストレス大）
+    a_score = sum([int(answers.get(f'q{i}', 3)) if i in [8,9,10,16,17] else (5 - int(answers.get(f'q{i}', 3))) for i in range(1, 18)])
+    b_score = sum([(5 - int(answers.get(f'q{i}', 3))) if i in [18,19,20] else int(answers.get(f'q{i}', 3)) for i in range(18, 47)])
+    c_score = sum([int(answers.get(f'q{i}', 3)) for i in range(47, 56)])
+
+    # 高ストレス判定（厚労省基準準拠）
+    is_high_stress = False
+    if b_score >= 77:
+        is_high_stress = True
+    elif b_score >= 63 and (a_score + c_score) >= 76:
+        is_high_stress = True
+
+    # 2. 5段階スケール変換（1:悪い ～ 5:良い）
+    def to_5_scale(q_list, reverse_goodness=False):
+        total = sum([(5 - int(answers.get(f'q{i}', 3))) if reverse_goodness else int(answers.get(f'q{i}', 3)) for i in q_list])
+        avg = total / len(q_list)
+        return round(1 + (avg - 1) * (4 / 3), 1)
+
+    # レーダーチャート用（7軸）
+    radar_scores = [
+        to_5_scale([1,2,3,4,5,6,7], False),     # 負担
+        to_5_scale([8,9,10], True),             # コントロール
+        to_5_scale([18,19,20], False),          # 活気
+        to_5_scale([21,22,23,24,25,26], True),  # イライラ
+        to_5_scale([27,28,29,30,31,32,33,34,35], True), # 不安・抑うつ
+        to_5_scale([47,50,53], True),           # 上司支援
+        to_5_scale([48,51,54], True)            # 同僚支援
+    ]
+
+    # 3. 詳細棒グラフ用スコア ＆ 自動コメント生成
+    domain_a_avg = to_5_scale(list(range(1, 18)), False)
+    domain_b_avg = to_5_scale(list(range(18, 47)), True)
+    domain_c_avg = to_5_scale(list(range(47, 56)), True)
+
+    advice_text = "日々の業務お疲れ様です。"
+    if domain_b_avg <= 2.5:
+        advice_text += "心身のストレス反応が強く出ているようです。休息を最優先にしてください。"
+    elif domain_a_avg <= 2.5:
+        advice_text += "仕事の量や質による負担が大きいようです。業務の調整や周囲への相談を検討してみましょう。"
+    elif domain_c_avg <= 2.5:
+        advice_text += "周囲のサポートが不足していると感じているようです。一人で抱え込まず、発信することが大切です。"
+    else:
+        advice_text += "現在のところ、全体的なバランスは比較的良好に保たれています。引き続きセルフケアを継続してください。"
+
+    return {
+        'is_high_stress': is_high_stress,
+        'radar_scores': radar_scores,
+        'bars': {
+            'domain_a': domain_a_avg,
+            'domain_b': domain_b_avg,
+            'domain_c': domain_c_avg
+        },
+        'advice_text': advice_text
     }
 
-def verify_otp(email: str, otp_input: str) -> bool:
-    entry = _otp_store.get(email)
-    if not entry:
-        return False
-    if time.time() > entry['expires']:
-        del _otp_store[email]
-        return False
-    if entry['otp'] != otp_input.strip():
-        return False
-    del _otp_store[email]  # 使用済みは削除
-    return True
+# ==========================================
+# ルーティング（画面表示）
+# ==========================================
 
-def send_otp_email(to_email: str, otp: str) -> bool:
-    """OTPメールを送信する。成功したらTrue、失敗したらFalse"""
-    try:
-        msg = MIMEMultipart('alternative')
-        msg['Subject'] = '【つばさSR】管理画面ワンタイムパスワード'
-        msg['From']    = f'{SMTP_FROM_NAME} <{SMTP_USER}>'
-        msg['To']      = to_email
-
-        html_body = f"""
-<html><body style="font-family:sans-serif; color:#1a202c; max-width:480px; margin:0 auto; padding:24px;">
-  <div style="background:#2d5a27; padding:20px; border-radius:8px 8px 0 0; text-align:center;">
-    <div style="color:#d6e9ca; font-size:12px; letter-spacing:2px; font-weight:700;">STRESS CHECK SYSTEM</div>
-    <div style="color:#fff; font-size:18px; font-weight:700; margin-top:4px;">ワンタイムパスワード</div>
-  </div>
-  <div style="background:#fff; border:1px solid #e2e8f0; border-top:none; padding:32px; border-radius:0 0 8px 8px;">
-    <p>管理画面へのログインリクエストを受け付けました。<br>以下のコードを入力してください。</p>
-    <div style="background:#f0f6ec; border:2px solid #2d5a27; border-radius:8px; text-align:center; padding:20px; margin:24px 0;">
-      <div style="font-size:36px; font-weight:700; letter-spacing:12px; color:#2d5a27; font-family:monospace;">{otp}</div>
-      <div style="font-size:12px; color:#9aa5b4; margin-top:8px;">有効期限：10分</div>
-    </div>
-    <p style="font-size:12px; color:#9aa5b4;">このメールに心当たりがない場合は、無視してください。</p>
-    <hr style="border:none; border-top:1px solid #e2e8f0; margin:20px 0;">
-    <p style="font-size:11px; color:#b0bac5; text-align:center;">つばさ社会保険労務士事務所</p>
-  </div>
-</body></html>"""
-
-        msg.attach(MIMEText(html_body, 'html', 'utf-8'))
-
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=10) as server:
-            server.ehlo()
-            server.starttls()
-            server.login(SMTP_USER, SMTP_PASS)
-            server.sendmail(SMTP_USER, to_email, msg.as_string())
-        return True
-    except Exception as e:
-        app.logger.error(f'メール送信失敗: {e}')
-        return False
-
-# ============================================================
-# 従業員向けルーティング
-# ============================================================
 @app.route('/')
 def index():
-    return render_template('index.html')
-
-@app.route('/api/submit', methods=['POST'])
-def submit():
-    data = request.get_json()
-    if not data:
-        return jsonify({'error': 'No data received'}), 400
-
-    required_fields = ['name', 'furigana', 'birth_date', 'gender',
-                       'employee_id', 'workplace_code', 'workplace_name']
-    for field in required_fields:
-        if not data.get(field):
-            return jsonify({'error': f'{field} is required'}), 400
-
-    answers = []
-    for i in range(1, 58):
-        val = data.get(f'q{i}')
-        if val is None or str(val) not in ['1', '2', '3', '4']:
-            return jsonify({'error': f'q{i} の回答が不正です（1〜4で指定してください）'}), 400
-        answers.append(int(val))
-
-    q_cols       = ', '.join([f'q{i}' for i in range(1, 58)])
-    placeholders = ', '.join(['?'] * (7 + 57 + 1))
-
-    row = [
-        data['name'], data['furigana'], data['birth_date'], data['gender'],
-        data['employee_id'], data['workplace_code'], data['workplace_name'],
-    ] + answers + [datetime.now().strftime('%Y/%m/%d %H:%M:%S')]
-
-    db = get_db()
-    db.execute(
-        f'INSERT INTO responses (name, furigana, birth_date, gender, employee_id, workplace_code, workplace_name, {q_cols}, submitted_at) VALUES ({placeholders})',
-        row
-    )
-    db.commit()
-    return jsonify({'success': True, 'message': '回答を保存しました。'}), 201
-
-# ============================================================
-# 管理者向けルーティング
-# ============================================================
-def admin_required(f):
-    """管理者セッションがなければログインページへリダイレクト"""
-    from functools import wraps
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        if not session.get('admin_logged_in'):
-            return redirect(url_for('admin_login'))
-        return f(*args, **kwargs)
-    return decorated
+    # 従業員ページ：DBから職場一覧を取得して渡す
+    conn = get_db_connection()
+    workplaces_db = conn.execute('SELECT * FROM workplaces ORDER BY code').fetchall()
+    conn.close()
+    
+    workplaces = [dict(wp) for wp in workplaces_db]
+    return render_template('index.html', company_name="デモ企業", workplaces=workplaces)
 
 @app.route('/admin')
-@admin_required
 def admin():
+    # 管理者ダッシュボード
     return render_template('admin.html')
 
-@app.route('/admin/login', methods=['GET', 'POST'])
-def admin_login():
-    error = None
+@app.route('/result')
+def show_result():
+    # 従業員の個人結果レポート画面
+    result_data = session.get('result_data')
+    if not result_data:
+        return redirect(url_for('index'))
+    return render_template('result.html', **result_data)
+
+# ==========================================
+# APIエンドポイント（データ処理）
+# ==========================================
+
+@app.route('/api/submit', methods=['POST'])
+def submit_data():
+    """ 従業員からの回答データを受け取る """
+    data = request.json
+    
+    # 1. 高ストレス判定とスコア計算を実行
+    analysis = analyze_stress(data)
+    
+    # 2. データベース(SQLite)に保存
+    conn = get_db_connection()
+    conn.execute('''
+        INSERT INTO responses (employee_id, name, workplace_name, is_high_stress, answers_json)
+        VALUES (?, ?, ?, ?, ?)
+    ''', (
+        data.get('employee_id', ''),
+        data.get('name', ''),
+        data.get('workplace_name', ''),
+        analysis['is_high_stress'],
+        json.dumps(data, ensure_ascii=False)
+    ))
+    conn.commit()
+    conn.close()
+
+    # 3. 結果画面に渡すデータをセッションに保存
+    today_str = datetime.datetime.now().strftime('%Y-%m-%d')
+    session['result_data'] = {
+        'employee_id': data.get('employee_id', ''),
+        'name': data.get('name', ''),
+        'workplace_name': data.get('workplace_name', ''),
+        'exam_date': today_str,
+        'ref_number': f"ID-{data.get('employee_id', '000')}",
+        'is_high_stress': analysis['is_high_stress'],
+        'radar_scores': analysis['radar_scores'],
+        'bars': analysis['bars'],
+        'advice_text': analysis['advice_text']
+    }
+    
+    # 4. フロントエンドに「成功したから結果画面に飛んでね」と返す
+    return jsonify({'success': True, 'redirect_url': url_for('show_result')})
+
+# ----------------- 職場管理API -----------------
+@app.route('/api/workplaces', methods=['GET', 'POST'])
+def manage_workplaces():
+    conn = get_db_connection()
     if request.method == 'POST':
-        email    = request.form.get('email', '').strip()
-        password = request.form.get('password', '').strip()
+        data = request.json
+        conn.execute('INSERT INTO workplaces (code, name, level) VALUES (?, ?, ?)',
+                     (data['code'], data['name'], data['level']))
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True})
+    else:
+        workplaces = conn.execute('SELECT * FROM workplaces ORDER BY code').fetchall()
+        conn.close()
+        return jsonify([dict(wp) for wp in workplaces])
 
-        if email == ADMIN_EMAIL and password == ADMIN_PASSWORD:
-            otp = generate_otp()
-            save_otp(email, otp)
-            success = send_otp_email(email, otp)
-            if success:
-                session['otp_email'] = email
-                return redirect(url_for('admin_verify'))
-            else:
-                # メール送信失敗時はOTPをログに出力（開発用）
-                app.logger.warning(f'[DEV] OTP for {email}: {otp}')
-                session['otp_email'] = email
-                error = f'メール送信に失敗しました。開発中はサーバーログにOTPが表示されています。'
-                return redirect(url_for('admin_verify'))
-        else:
-            error = 'メールアドレスまたはパスワードが正しくありません。'
+@app.route('/api/workplaces/<int:id>', methods=['DELETE'])
+def delete_workplace(id):
+    conn = get_db_connection()
+    conn.execute('DELETE FROM workplaces WHERE id = ?', (id,))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
 
-    return render_template('login.html', error=error)
+# ----------------- 結果一覧取得API（管理者画面用） ----------------- 
+@app.route('/api/responses') 
+def get_responses(): 
+    conn = get_db_connection() 
+    rows = conn.execute('SELECT * FROM responses ORDER BY created_at DESC').fetchall() 
+    conn.close() 
+    
+    results = []
+    for r in rows:
+        # DBに保存されている詳細データ（JSON）を読み解く
+        try:
+            ans = json.loads(r['answers_json'])
+        except:
+            ans = {}
+            
+        # admin.htmlが求めている名前（キー）にピッタリ合わせてデータを渡す
+        results.append({
+            'id': r['id'],
+            'employee_id': r['employee_id'],
+            'name': r['name'],
+            'furigana': ans.get('furigana', ''),
+            'birth_date': ans.get('birth_date', ''),
+            'gender': ans.get('gender', ''),
+            'workplace_code': ans.get('workplace_code', ''),
+            'workplace_name': r['workplace_name'],
+            'is_high_stress': r['is_high_stress'],
+            'submitted_at': r['created_at']
+        })
+        
+    return jsonify(results)
 
-@app.route('/admin/verify', methods=['GET', 'POST'])
-def admin_verify():
-    email = session.get('otp_email')
-    if not email:
-        return redirect(url_for('admin_login'))
-
-    error = None
+# ----------------- 設定管理ダミーAPI（エラー防止用） -----------------
+@app.route('/api/settings', methods=['GET', 'POST'])
+def manage_settings():
     if request.method == 'POST':
-        otp_input = request.form.get('otp', '').strip()
-        if verify_otp(email, otp_input):
-            session.pop('otp_email', None)
-            session['admin_logged_in'] = True
-            session.permanent = True
-            return redirect(url_for('admin'))
-        else:
-            error = 'コードが正しくないか、有効期限が切れています。'
+        return jsonify({'success': True})
+    return jsonify({})
 
-    return render_template('verify.html', email=email, error=error)
+# ----------------- CSV出力API（職場データ） -----------------
+@app.route('/api/csv/workplaces')
+def export_workplaces_csv():
+    conn = get_db_connection()
+    workplaces = conn.execute('SELECT code, name, level FROM workplaces ORDER BY code').fetchall()
+    conn.close()
 
-@app.route('/admin/logout')
-def admin_logout():
-    session.clear()
-    return redirect(url_for('admin_login'))
+    si = io.StringIO()
+    cw = csv.writer(si)
+    cw.writerow(['職場コード', '職場名', '階層レベル'])
+    for wp in workplaces:
+        cw.writerow([wp['code'], wp['name'], wp['level']])
 
-@app.route('/api/responses', methods=['GET'])
-@admin_required
-def get_responses():
-    db = get_db()
-    rows = db.execute(
-        'SELECT id, name, furigana, birth_date, gender, employee_id, workplace_code, workplace_name, submitted_at FROM responses ORDER BY id DESC'
-    ).fetchall()
-    return jsonify([dict(row) for row in rows])
+    output = make_response(si.getvalue().encode('utf-8-sig'))
+    output.headers["Content-Disposition"] = "attachment; filename=workplaces.csv"
+    output.headers["Content-type"] = "text/csv"
+    return output
 
-@app.route('/api/csv', methods=['GET'])
-@admin_required
-def download_csv():
-    db = get_db()
-    q_cols = ', '.join([f'q{i}' for i in range(1, 58)])
-    rows = db.execute(
-        f'SELECT name, furigana, birth_date, gender, employee_id, workplace_code, workplace_name, {q_cols} FROM responses ORDER BY id ASC'
-    ).fetchall()
+# ----------------- CSV出力API（回答データ・指定フォーマット版） -----------------
+@app.route('/api/csv')
+def export_results_csv():
+    conn = get_db_connection()
+    responses = conn.execute('SELECT * FROM responses ORDER BY created_at DESC').fetchall()
+    conn.close()
 
-    output = io.StringIO()
-    writer = csv.writer(output, lineterminator='\r\n')
-    header = ['氏名', 'フリガナ', '生年月日', '性別', '社員ID', '職場コード', '職場名']
-    header += [f'Q{i}' for i in range(1, 58)]
-    writer.writerow(header)
-    for row in rows:
-        writer.writerow(list(row))
+    si = io.StringIO()
+    cw = csv.writer(si)
+    
+    # 1. いただいたCSVフォーマットに合わせたヘッダーを作成
+    headers = [
+        '氏名', 'フリガナ', '生年月日(西暦)', '性別', '社員ID', '職場コード', '職場名',
+        '前回社員ID', 'メールアドレス', '電話番号', '内線番号', '備考', '管理者コメント', '変数値'
+    ]
+    headers += [f'A-{i}' for i in range(1, 18)]
+    headers += [f'B-{i}' for i in range(1, 30)]
+    headers += [f'C-{i}' for i in range(1, 10)]
+    headers += [f'D-{i}' for i in range(1, 3)]
+    
+    cw.writerow(headers)
 
-    csv_bytes = output.getvalue().encode('utf-8-sig')
-    return Response(
-        csv_bytes,
-        mimetype='text/csv',
-        headers={
-            'Content-Disposition': 'attachment; filename="stress_check_results.csv"',
-            'Content-Type': 'text/csv; charset=utf-8-sig'
-        }
-    )
+    # 2. データをフォーマットに当てはめる
+    for r in responses:
+        try:
+            ans = json.loads(r['answers_json'])
+        except:
+            ans = {}
+            
+        row = [
+            r['name'],                      # 氏名
+            ans.get('furigana', ''),        # フリガナ
+            ans.get('birth_date', ''),      # 生年月日(西暦)
+            ans.get('gender', ''),          # 性別
+            r['employee_id'],               # 社員ID
+            ans.get('workplace_code', ''),  # 職場コード
+            r['workplace_name'],            # 職場名
+            '', '', '', '', '', '', ''      # 前回社員ID 〜 変数値までは空欄
+        ]
+        
+        # A-1 〜 A-17 (q1 〜 q17)
+        for i in range(1, 18):
+            row.append(ans.get(f'q{i}', ''))
+            
+        # B-1 〜 B-29 (q18 〜 q46)
+        for i in range(18, 47):
+            row.append(ans.get(f'q{i}', ''))
+            
+        # C-1 〜 C-9 (q47 〜 q55)
+        for i in range(47, 56):
+            row.append(ans.get(f'q{i}', ''))
+            
+        # D-1 〜 D-2 (q56 〜 q57)
+        for i in range(56, 58):
+            row.append(ans.get(f'q{i}', ''))
+            
+        cw.writerow(row)
 
+    # 取込システムで文字化けしないように「cp932 (Shift_JIS)」で出力します
+    output = make_response(si.getvalue().encode('cp932', errors='replace'))
+    output.headers["Content-Disposition"] = "attachment; filename=stress_results.csv"
+    output.headers["Content-type"] = "text/csv"
+    return output
+
+# ==========================================
+# サーバー起動設定（Gcloud Run対応）
+# ==========================================
 if __name__ == '__main__':
-    init_db()
-    app.run(debug=True)
+    port = int(os.environ.get('PORT', 8080))
+    app.run(host='0.0.0.0', port=port, debug=True)
