@@ -144,33 +144,36 @@ def show_result():
 def submit_data():
     """ 従業員からの回答データを受け取る """
     data = request.json
-    
+
     # 1. 高ストレス判定とスコア計算を実行
     analysis = analyze_stress(data)
-    
-    # 2. データベース(SQLite)に保存
+
+    # 2. データベース(SQLite)に保存（employee_idは自動採番）
     conn = get_db_connection()
-    conn.execute('''
+    cursor = conn.execute('''
         INSERT INTO responses (employee_id, name, workplace_name, is_high_stress, answers_json)
         VALUES (?, ?, ?, ?, ?)
     ''', (
-        data.get('employee_id', ''),
+        '',  # 仮で空にしてINSERT後に採番
         data.get('name', ''),
         data.get('workplace_name', ''),
         analysis['is_high_stress'],
         json.dumps(data, ensure_ascii=False)
     ))
+    row_id = cursor.lastrowid
+    # 挿入されたDBのIDをそのままemployee_idとして設定（1, 2, 3...の連番）
+    conn.execute('UPDATE responses SET employee_id = ? WHERE id = ?', (str(row_id), row_id))
     conn.commit()
     conn.close()
 
     # 3. 結果画面に渡すデータをセッションに保存
     today_str = datetime.datetime.now().strftime('%Y-%m-%d')
     session['result_data'] = {
-        'employee_id': data.get('employee_id', ''),
+        'employee_id': str(row_id),
         'name': data.get('name', ''),
         'workplace_name': data.get('workplace_name', ''),
         'exam_date': today_str,
-        'ref_number': f"ID-{data.get('employee_id', '000')}",
+        'ref_number': f"SC-{row_id:04d}",
         'is_high_stress': analysis['is_high_stress'],
         'radar_scores': analysis['radar_scores'],
         'bars': analysis['bars'],
