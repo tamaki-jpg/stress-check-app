@@ -2,3 +2,4 @@ Flask
 gunicorn
 google-cloud-firestore
 Authlib==1.3.0
+openpyxl

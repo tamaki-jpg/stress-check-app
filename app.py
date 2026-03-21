@@ -4,6 +4,8 @@ import sqlite3
 import datetime
 import io
 import csv
+import openpyxl
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, make_response
 
 app = Flask(__name__)
@@ -245,22 +247,77 @@ def manage_settings():
         return jsonify({'success': True})
     return jsonify({})
 
-# ----------------- CSV出力API（職場データ） -----------------
+# ----------------- Excel出力API（職場データ・取込用フォーマット） -----------------
 @app.route('/api/csv/workplaces')
 def export_workplaces_csv():
     conn = get_db_connection()
     workplaces = conn.execute('SELECT code, name, level FROM workplaces ORDER BY code').fetchall()
     conn.close()
 
-    si = io.StringIO()
-    cw = csv.writer(si)
-    cw.writerow(['職場コード', '職場名', '階層レベル'])
-    for wp in workplaces:
-        cw.writerow([wp['code'], wp['name'], wp['level']])
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = 'newSheet'
 
-    output = make_response(si.getvalue().encode('utf-8-sig'))
-    output.headers["Content-Disposition"] = "attachment; filename=workplaces.csv"
-    output.headers["Content-type"] = "text/csv"
+    # ヘッダー行の定義（添付Excelと同じ13列）
+    headers = [
+        '職場コード', '前回職場コード',
+        '第1職場名', '第2職場名', '第3職場名', '第4職場名', '第5職場名',
+        '第6職場名', '第7職場名', '第8職場名', '第9職場名', '第10職場名',
+        '初回パスワード'
+    ]
+
+    # ヘッダースタイル
+    header_fill   = PatternFill('solid', start_color='1F497D', end_color='1F497D')
+    header_font   = Font(name='Arial', bold=True, color='FFFFFF', size=10)
+    header_align  = Alignment(horizontal='center', vertical='center', wrap_text=True)
+    thin_border   = Border(
+        left=Side(style='thin'), right=Side(style='thin'),
+        top=Side(style='thin'), bottom=Side(style='thin')
+    )
+
+    for col_idx, h in enumerate(headers, start=1):
+        cell = ws.cell(row=1, column=col_idx, value=h)
+        cell.font   = header_font
+        cell.fill   = header_fill
+        cell.alignment = header_align
+        cell.border = thin_border
+
+    # データ行：level に応じて第N職場名カラムに名前を入れる
+    data_font  = Font(name='Arial', size=10)
+    data_align = Alignment(vertical='center')
+
+    for row_idx, wp in enumerate(workplaces, start=2):
+        level = int(wp['level']) if wp['level'] else 1
+        # 13列分の空行を作成し、職場コードと該当する第N職場名だけ埋める
+        row_data = [''] * 13
+        row_data[0] = str(wp['code'])          # A: 職場コード
+        row_data[1] = ''                        # B: 前回職場コード（空）
+        name_col = 1 + level                    # C=第1(level1), D=第2(level2)...
+        if 2 <= name_col <= 11:
+            row_data[name_col] = wp['name']     # 第N職場名
+        row_data[12] = ''                       # M: 初回パスワード（空）
+
+        for col_idx, val in enumerate(row_data, start=1):
+            cell = ws.cell(row=row_idx, column=col_idx, value=val)
+            cell.font      = data_font
+            cell.alignment = data_align
+            cell.border    = thin_border
+
+    # 列幅の調整
+    col_widths = [14, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16, 16]
+    for i, width in enumerate(col_widths, start=1):
+        ws.column_dimensions[openpyxl.utils.get_column_letter(i)].width = width
+
+    ws.row_dimensions[1].height = 30  # ヘッダー行の高さ
+
+    # バイト列として出力
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+
+    output = make_response(buf.read())
+    output.headers["Content-Disposition"] = "attachment; filename=workplaces.xlsx"
+    output.headers["Content-type"] = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     return output
 
 # ----------------- CSV出力API（回答データ・指定フォーマット版） -----------------
