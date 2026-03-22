@@ -154,6 +154,11 @@ def show_result():
     result_data = session.get('result_data')
     if not result_data:
         return redirect(url_for('index'))
+    # 古いセッション（answers_json なし）への後方互換フォールバック
+    if 'answers_json' not in result_data:
+        result_data['answers_json'] = json.dumps(
+            {f'q{i}': 3 for i in range(1, 58)}, ensure_ascii=False
+        )
     return render_template('result.html', **result_data)
 
 # ==========================================
