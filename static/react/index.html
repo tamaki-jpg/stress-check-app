@@ -72,6 +72,7 @@
        メインアプリ（JSX → Babel でブラウザ変換）
        ══════════════════════════════════════════════════ -->
   <script type="text/babel">
+    window.addEventListener('load', () => {
     const { useState } = React;
     const Recharts = window.Recharts || window._Recharts;
     const {
@@ -329,6 +330,7 @@
     }
 
     ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    }); // end window.addEventListener('load')
   </script>
 </body>
 </html>

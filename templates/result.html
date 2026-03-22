@@ -78,7 +78,8 @@
   </script>
 
   {% raw %}<script type="text/babel">
-    // Recharts の UMD は環境によって _Recharts または Recharts で登録される
+    window.addEventListener('load', () => {
+    // CDN スクリプトが全て読み込まれてから実行（タイミング問題を回避）
     const Recharts = window.Recharts || window._Recharts;
     const {
       RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
@@ -335,6 +336,7 @@
     ReactDOM.createRoot(document.getElementById('root')).render(
       <StressProfileResult {...result} />
     );
+    }); // end window.addEventListener('load')
   </script>{% endraw %}
 </body>
 </html>
