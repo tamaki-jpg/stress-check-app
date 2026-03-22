@@ -252,9 +252,207 @@
       .q-text { font-size: 12px; }
       .q-num { min-width: 38px; font-size: 11px; }
     }
+
+    /* ===== イントロ画面（厚生労働省デザイン） ===== */
+    .intro-step { display: none; min-height: 100vh; flex-direction: column; background: #fff; }
+    .intro-step.active { display: flex; }
+
+    .intro-outer-header {
+      background: white;
+      text-align: right;
+      padding: 6px 20px;
+      border-bottom: 1px solid #eee;
+    }
+    .mhlw-logo-text {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 14px; font-weight: 700; color: #c00;
+    }
+    .mhlw-logo-mark {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: radial-gradient(circle at 38% 38%, #f44, #a00);
+      display: inline-flex; align-items: center; justify-content: center;
+      color: white; font-size: 9px; font-weight: bold; line-height: 1.2; text-align: center;
+    }
+
+    .intro-main-header {
+      background: linear-gradient(180deg, #4a8010 0%, #70ab24 100%);
+      padding: 8px 20px;
+      display: flex; align-items: center; gap: 18px;
+    }
+    .sc-logo {
+      width: 74px; height: 74px; border-radius: 50%;
+      background: white; flex-shrink: 0;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      border: 3px solid #90c030; overflow: hidden;
+    }
+    .sc-logo-inner {
+      width: 68px; height: 68px; border-radius: 50%;
+      background: linear-gradient(135deg, #3a7005 0%, #80c020 100%);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      color: white; font-size: 7.5px; font-weight: 900;
+      text-align: center; line-height: 1.35; letter-spacing: 0.5px;
+    }
+    .intro-title-area { color: white; }
+    .intro-subtitle-sm { font-size: 14px; font-weight: 400; opacity: 0.92; }
+    .intro-main-title { font-size: 28px; font-weight: 700; line-height: 1.25; }
+    @media (max-width: 620px) { .intro-main-title { font-size: 20px; } }
+
+    .intro-body {
+      flex: 1; position: relative; overflow: hidden;
+      padding: 28px 24px 80px;
+      max-width: 960px; width: 100%; margin: 0 auto; box-sizing: border-box;
+    }
+    .intro-content { max-width: 660px; }
+    .intro-h2 {
+      font-size: 18px; font-weight: 700; color: #1a5226;
+      border-bottom: 2px solid #70ab24; padding-bottom: 4px; margin-bottom: 12px;
+    }
+    .intro-p { font-size: 14px; line-height: 1.95; color: #222; margin-bottom: 4px; }
+    .intro-small { font-size: 12px; color: #444; line-height: 1.85; padding-left: 0; }
+    .intro-list { list-style: none; padding: 0; margin: 8px 0 20px; }
+    .intro-list li { font-size: 14px; color: #222; line-height: 2.0; }
+    .intro-list li::before { content: "・"; }
+    .intro-responsible { font-size: 14px; color: #222; line-height: 2.2; margin: 12px 0 0; }
+    .intro-responsible .resp-name { font-weight: 700; display: block; margin-left: 1em; }
+    .intro-start-msg { font-size: 18px; font-weight: 700; color: #1a3a6a; margin-top: 28px; }
+
+    /* デコレーション丸 */
+    .deco-circles { position: absolute; right: 0; top: 0; width: 200px; height: 380px; pointer-events: none; }
+    .deco-circle { position: absolute; border-radius: 50%; }
+    .deco-orange { width: 130px; height: 130px; background: radial-gradient(circle at 38% 35%, #f9c8a2, #e07035); opacity: .5; top: 10px; right: 20px; }
+    .deco-blue   { width:  95px; height:  95px; background: radial-gradient(circle at 40% 38%, #b2d8ef, #4888b8); opacity: .5; top: 145px; right: 80px; }
+    .deco-yellow { width:  75px; height:  75px; background: radial-gradient(circle at 45% 40%, #fff5a0, #e8bc28); opacity: .55; top: 250px; right: 68px; }
+
+    .intro-footer {
+      background: #f5f5f5; border-top: 1px solid #ddd;
+      text-align: center; padding: 9px 20px;
+      font-size: 11px; color: #888;
+    }
+
+    .intro-next-wrap {
+      position: fixed; bottom: 34px; right: 40px; z-index: 200;
+    }
+    .btn-intro-next {
+      border: 1px solid #aaa; background: white;
+      padding: 11px 38px; font-size: 15px;
+      cursor: pointer; font-family: inherit; color: #333;
+      box-shadow: 1px 2px 6px rgba(0,0,0,0.10);
+    }
+    .btn-intro-next:hover { background: #f0f0f0; }
   </style>
 </head>
 <body>
+
+<!-- =====================================================
+     イントロ ステップ 0（ストレスチェックとは？）
+     ===================================================== -->
+<div class="intro-step active" id="intro-step-0">
+  <div class="intro-outer-header">
+    <span class="mhlw-logo-text">
+      <span class="mhlw-logo-mark">厚労<br>省</span>
+      厚生労働省
+    </span>
+  </div>
+  <div class="intro-main-header">
+    <div class="sc-logo">
+      <div class="sc-logo-inner">STRESS<br>CHECK<br>PROGRAM</div>
+    </div>
+    <div class="intro-title-area">
+      <div class="intro-subtitle-sm">厚生労働省版</div>
+      <div class="intro-main-title">ストレスチェック実施プログラム 標準版（57項目）</div>
+    </div>
+  </div>
+  <div class="intro-body">
+    <div class="deco-circles">
+      <div class="deco-circle deco-orange"></div>
+      <div class="deco-circle deco-blue"></div>
+      <div class="deco-circle deco-yellow"></div>
+    </div>
+    <div class="intro-content">
+      <h2 class="intro-h2">ストレスチェックって何ですか？</h2>
+      <p class="intro-p">
+        「ストレスチェック」とは、ストレスに関する質問票（選択回答）に労働者が記入し、それを集計・分析することで、<br>
+        自分のストレスがどのような状態にあるのかを調べる簡単な検査です。「労働安全衛生法」という法律に基づき、<br>
+        労働者が50人以上いる事業所では、2015 年 12 月から、毎年1回、この検査を全ての労働者※に対して実施することが義務付けられています。
+      </p>
+      <p class="intro-small">
+        ※ 契約期間が1年未満の労働者や、労働時間が通常の労働者の所定労働時間の4分の3未満の短時間労働者は義務の対象外です。<br>
+        　 ご自身が受検対象になるかどうか不明な場合は、自社のストレスチェックご担当者にお問い合わせください。
+      </p>
+
+      <br>
+      <h2 class="intro-h2">何のためにやるのでしょうか？</h2>
+      <p class="intro-p">
+        労働者が自分のストレスの状態を知ることで、ストレスをためすぎないように対処したり、ストレスが高い状態の場合は<br>
+        医師の面接を受けて助言をもらったり、会社側に仕事の軽減などの措置を実施してもらったり、職場の改善につなげたりすることで、<br>
+        「うつ」などのメンタルヘルス不調を未然に防止するための仕組みです。検査結果があなたの同意なく会社側に伝わることはありません。<br>
+        出来るだけ受検いただくよう、ご協力をお願い致します。
+      </p>
+
+      <br>
+      <a href="#" style="color:#1a5276; font-size:14px;">受検者回答用アプリマニュアルはこちら</a>
+    </div>
+  </div>
+  <div class="intro-footer">Copyright &copy; Ministry of Health, Labour and Welfare, All Right reserved.</div>
+  <div class="intro-next-wrap">
+    <button class="btn-intro-next" onclick="goIntroStep(1)">次へ</button>
+  </div>
+</div>
+
+<!-- =====================================================
+     イントロ ステップ 1（実施責任者・開始案内）
+     ===================================================== -->
+<div class="intro-step" id="intro-step-1">
+  <div class="intro-outer-header">
+    <span class="mhlw-logo-text">
+      <span class="mhlw-logo-mark">厚労<br>省</span>
+      厚生労働省
+    </span>
+  </div>
+  <div class="intro-main-header">
+    <div class="sc-logo">
+      <div class="sc-logo-inner">STRESS<br>CHECK<br>PROGRAM</div>
+    </div>
+    <div class="intro-title-area">
+      <div class="intro-subtitle-sm">厚生労働省版</div>
+      <div class="intro-main-title">ストレスチェック実施プログラム 標準版（57項目）</div>
+    </div>
+  </div>
+  <div class="intro-body">
+    <div class="deco-circles">
+      <div class="deco-circle deco-orange"></div>
+      <div class="deco-circle deco-blue"></div>
+      <div class="deco-circle deco-yellow"></div>
+    </div>
+    <div class="intro-content">
+      <p class="intro-p">職業性ストレス簡易調査票を用いて</p>
+      <p class="intro-p">あなたの職場におけるストレスレベルを測定します。</p>
+      <p class="intro-p">質問は全部で57問です。（所要時間5分間）</p>
+
+      <ul class="intro-list">
+        <li>この検査は、労働安全衛生法に基づくものです。</li>
+        <li>検査結果は、あなたの同意なく会社側に伝わることはありません。</li>
+        <li>検査の実施責任者は<br>
+          <span style="display:inline-block; margin-left:1.5em; font-weight:700;">{{ practitioner_name }}</span><br>
+          です。
+        </li>
+      </ul>
+
+      <p class="intro-start-msg">それではさっそくストレスチェックを始めましょう！</p>
+    </div>
+  </div>
+  <div class="intro-footer">Copyright &copy; Ministry of Health, Labour and Welfare, All Right reserved.</div>
+  <div class="intro-next-wrap">
+    <button class="btn-intro-next" onclick="goIntroStep(2)">次へ</button>
+  </div>
+</div>
+
+<!-- =====================================================
+     メインコンテンツ（回答フォーム）
+     ===================================================== -->
+<div id="main-wrapper" style="display:none;">
 
 <!-- 上部固定プログレスバー -->
 <div id="sticky-progress">
@@ -351,7 +549,22 @@
 
 <div id="toast" class="toast"></div>
 
+</div><!-- /#main-wrapper -->
+
 <script>
+  // ===== イントロステップ制御 =====
+  function goIntroStep(step) {
+    document.querySelectorAll('.intro-step').forEach(el => el.classList.remove('active'));
+    if (step === 1) {
+      document.getElementById('intro-step-1').classList.add('active');
+      window.scrollTo(0, 0);
+    } else {
+      // メインコンテンツを表示
+      document.getElementById('main-wrapper').style.display = 'block';
+      window.scrollTo(0, 0);
+    }
+  }
+
   // ===== 職場コード連動 =====
   function updateWorkplaceCode() {
     const sel = document.getElementById('workplace_name');

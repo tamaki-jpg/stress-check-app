@@ -29,6 +29,13 @@ def init_db():
             level INTEGER NOT NULL
         )
     ''')
+    # 設定テーブル（管理画面の実施者管理と連動）
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL DEFAULT ''
+        )
+    ''')
     # 回答結果テーブル（回答内容は扱いやすいようにJSONで丸ごと保存）
     c.execute('''
         CREATE TABLE IF NOT EXISTS responses (
@@ -51,6 +58,12 @@ def get_db_connection():
     conn = sqlite3.connect(DB_NAME)
     conn.row_factory = sqlite3.Row
     return conn
+
+def get_setting(key, default=''):
+    conn = get_db_connection()
+    row = conn.execute('SELECT value FROM settings WHERE key = ?', (key,)).fetchone()
+    conn.close()
+    return row['value'] if row else default
 
 # ==========================================
 # ストレスチェック 判定 ＆ 詳細スコア計算ロジック
@@ -117,13 +130,18 @@ def analyze_stress(answers):
 
 @app.route('/')
 def index():
-    # 従業員ページ：DBから職場一覧を取得して渡す
+    # 従業員ページ：DBから職場一覧と設定を取得して渡す
     conn = get_db_connection()
     workplaces_db = conn.execute('SELECT * FROM workplaces ORDER BY code').fetchall()
     conn.close()
-    
+
     workplaces = [dict(wp) for wp in workplaces_db]
-    return render_template('index.html', company_name="デモ企業", workplaces=workplaces)
+    company_name      = get_setting('company_name', 'デモ企業')
+    practitioner_name = get_setting('practitioner_name', '（未設定）')
+    return render_template('index.html',
+                           company_name=company_name,
+                           practitioner_name=practitioner_name,
+                           workplaces=workplaces)
 
 @app.route('/admin')
 def admin():
@@ -240,12 +258,23 @@ def get_responses():
         
     return jsonify(results)
 
-# ----------------- 設定管理ダミーAPI（エラー防止用） -----------------
+# ----------------- 設定管理API（管理画面の実施者管理と連動） -----------------
 @app.route('/api/settings', methods=['GET', 'POST'])
 def manage_settings():
+    conn = get_db_connection()
     if request.method == 'POST':
+        data = request.json or {}
+        for key, value in data.items():
+            conn.execute(
+                'INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)',
+                (key, str(value))
+            )
+        conn.commit()
+        conn.close()
         return jsonify({'success': True})
-    return jsonify({})
+    rows = conn.execute('SELECT key, value FROM settings').fetchall()
+    conn.close()
+    return jsonify({row['key']: row['value'] for row in rows})
 
 # ----------------- Excel出力API（職場データ・取込用フォーマット） -----------------
 @app.route('/api/csv/workplaces')
