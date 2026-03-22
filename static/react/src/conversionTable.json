@@ -1,0 +1,42 @@
+{
+  "male": {
+    "A1_quantity":      [{"min":12,"max":15,"point":1},{"min":10,"max":11,"point":2},{"min":8,"max":9,"point":3},{"min":6,"max":7,"point":4},{"min":3,"max":5,"point":5}],
+    "A2_quality":       [{"min":12,"max":15,"point":1},{"min":10,"max":11,"point":2},{"min":8,"max":9,"point":3},{"min":6,"max":7,"point":4},{"min":3,"max":5,"point":5}],
+    "A3_physical":      [{"min":4,"max":4,"point":1},{"min":3,"max":3,"point":2},{"min":2,"max":2,"point":3},{"min":1,"max":1,"point":4}],
+    "A4_interpersonal": [{"min":9,"max":11,"point":1},{"min":7,"max":8,"point":2},{"min":5,"max":6,"point":3},{"min":3,"max":4,"point":4},{"min":1,"max":2,"point":5}],
+    "A5_environment":   [{"min":4,"max":4,"point":1},{"min":3,"max":3,"point":2},{"min":2,"max":2,"point":3},{"min":1,"max":1,"point":4}],
+    "A6_control":       [{"min":3,"max":5,"point":1},{"min":6,"max":7,"point":2},{"min":8,"max":9,"point":3},{"min":10,"max":11,"point":4},{"min":12,"max":15,"point":5}],
+    "A7_skill":         [{"min":1,"max":1,"point":1},{"min":2,"max":2,"point":2},{"min":3,"max":3,"point":3},{"min":4,"max":4,"point":4}],
+    "A8_suitability":   [{"min":4,"max":4,"point":1},{"min":3,"max":3,"point":2},{"min":2,"max":2,"point":3},{"min":1,"max":1,"point":4}],
+    "A9_reward":        [{"min":4,"max":4,"point":1},{"min":3,"max":3,"point":2},{"min":2,"max":2,"point":3},{"min":1,"max":1,"point":4}],
+    "B1_vigor":         [{"min":3,"max":3,"point":1},{"min":4,"max":5,"point":2},{"min":6,"max":7,"point":3},{"min":8,"max":9,"point":4},{"min":10,"max":12,"point":5}],
+    "B2_irritation":    [{"min":9,"max":12,"point":1},{"min":7,"max":8,"point":2},{"min":5,"max":6,"point":3},{"min":3,"max":4,"point":4},{"min":1,"max":2,"point":5}],
+    "B3_fatigue":       [{"min":9,"max":12,"point":1},{"min":7,"max":8,"point":2},{"min":5,"max":6,"point":3},{"min":3,"max":4,"point":4},{"min":1,"max":2,"point":5}],
+    "B4_anxiety":       [{"min":9,"max":12,"point":1},{"min":7,"max":8,"point":2},{"min":5,"max":6,"point":3},{"min":3,"max":4,"point":4},{"min":1,"max":2,"point":5}],
+    "B5_depression":    [{"min":19,"max":24,"point":1},{"min":15,"max":18,"point":2},{"min":11,"max":14,"point":3},{"min":7,"max":10,"point":4},{"min":3,"max":6,"point":5}],
+    "B6_physical":      [{"min":35,"max":44,"point":1},{"min":28,"max":34,"point":2},{"min":21,"max":27,"point":3},{"min":14,"max":20,"point":4},{"min":7,"max":13,"point":5}],
+    "C1_boss":          [{"min":3,"max":4,"point":1},{"min":5,"max":6,"point":2},{"min":7,"max":9,"point":3},{"min":10,"max":11,"point":4},{"min":12,"max":12,"point":5}],
+    "C2_coworker":      [{"min":3,"max":4,"point":1},{"min":5,"max":6,"point":2},{"min":7,"max":9,"point":3},{"min":10,"max":11,"point":4},{"min":12,"max":12,"point":5}],
+    "C3_family":        [{"min":3,"max":4,"point":1},{"min":5,"max":6,"point":2},{"min":7,"max":9,"point":3},{"min":10,"max":11,"point":4},{"min":12,"max":12,"point":5}]
+  },
+  "female": {
+    "A1_quantity":      [{"min":12,"max":15,"point":1},{"min":10,"max":11,"point":2},{"min":7,"max":9,"point":3},{"min":5,"max":6,"point":4},{"min":3,"max":4,"point":5}],
+    "A2_quality":       [{"min":12,"max":15,"point":1},{"min":10,"max":11,"point":2},{"min":7,"max":9,"point":3},{"min":5,"max":6,"point":4},{"min":3,"max":4,"point":5}],
+    "A3_physical":      [{"min":4,"max":4,"point":1},{"min":3,"max":3,"point":2},{"min":2,"max":2,"point":3},{"min":1,"max":1,"point":4}],
+    "A4_interpersonal": [{"min":9,"max":11,"point":1},{"min":7,"max":8,"point":2},{"min":5,"max":6,"point":3},{"min":3,"max":4,"point":4},{"min":1,"max":2,"point":5}],
+    "A5_environment":   [{"min":4,"max":4,"point":1},{"min":3,"max":3,"point":2},{"min":2,"max":2,"point":3},{"min":1,"max":1,"point":4}],
+    "A6_control":       [{"min":3,"max":5,"point":1},{"min":6,"max":7,"point":2},{"min":8,"max":9,"point":3},{"min":10,"max":11,"point":4},{"min":12,"max":15,"point":5}],
+    "A7_skill":         [{"min":1,"max":1,"point":1},{"min":2,"max":2,"point":2},{"min":3,"max":3,"point":3},{"min":4,"max":4,"point":4}],
+    "A8_suitability":   [{"min":4,"max":4,"point":1},{"min":3,"max":3,"point":2},{"min":2,"max":2,"point":3},{"min":1,"max":1,"point":4}],
+    "A9_reward":        [{"min":4,"max":4,"point":1},{"min":3,"max":3,"point":2},{"min":2,"max":2,"point":3},{"min":1,"max":1,"point":4}],
+    "B1_vigor":         [{"min":3,"max":3,"point":1},{"min":4,"max":5,"point":2},{"min":6,"max":7,"point":3},{"min":8,"max":9,"point":4},{"min":10,"max":12,"point":5}],
+    "B2_irritation":    [{"min":9,"max":12,"point":1},{"min":7,"max":8,"point":2},{"min":5,"max":6,"point":3},{"min":3,"max":4,"point":4},{"min":1,"max":2,"point":5}],
+    "B3_fatigue":       [{"min":9,"max":12,"point":1},{"min":7,"max":8,"point":2},{"min":5,"max":6,"point":3},{"min":3,"max":4,"point":4},{"min":1,"max":2,"point":5}],
+    "B4_anxiety":       [{"min":9,"max":12,"point":1},{"min":7,"max":8,"point":2},{"min":5,"max":6,"point":3},{"min":3,"max":4,"point":4},{"min":1,"max":2,"point":5}],
+    "B5_depression":    [{"min":19,"max":24,"point":1},{"min":15,"max":18,"point":2},{"min":11,"max":14,"point":3},{"min":7,"max":10,"point":4},{"min":3,"max":6,"point":5}],
+    "B6_physical":      [{"min":35,"max":44,"point":1},{"min":28,"max":34,"point":2},{"min":21,"max":27,"point":3},{"min":14,"max":20,"point":4},{"min":7,"max":13,"point":5}],
+    "C1_boss":          [{"min":3,"max":4,"point":1},{"min":5,"max":6,"point":2},{"min":7,"max":9,"point":3},{"min":10,"max":11,"point":4},{"min":12,"max":12,"point":5}],
+    "C2_coworker":      [{"min":3,"max":4,"point":1},{"min":5,"max":6,"point":2},{"min":7,"max":9,"point":3},{"min":10,"max":11,"point":4},{"min":12,"max":12,"point":5}],
+    "C3_family":        [{"min":3,"max":4,"point":1},{"min":5,"max":6,"point":2},{"min":7,"max":9,"point":3},{"min":10,"max":11,"point":4},{"min":12,"max":12,"point":5}]
+  }
+}
