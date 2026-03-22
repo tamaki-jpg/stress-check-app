@@ -11,10 +11,11 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Noto Sans JP', 'Helvetica Neue', sans-serif; background: #f2f5ee; }
+    #loading { display:flex; align-items:center; justify-content:center; height:100vh; font-size:16px; color:#559018; }
   </style>
 </head>
 <body>
-  <div id="root"></div>
+  <div id="root"><div id="loading">結果を読み込んでいます…</div></div>
 
   <!-- Flask から渡された回答データ（q1〜q57） -->
   <script id="answers-data" type="application/json">{{ answers_json | safe }}</script>
@@ -26,72 +27,86 @@
     "workplace_name": {{ workplace_name | tojson }},
     "exam_date":      {{ exam_date | tojson }},
     "ref_number":     {{ ref_number | tojson }},
-    "employee_id":    {{ employee_id | tojson }}
+    "employee_id":    {{ employee_id | tojson }},
+    "is_high_stress": {{ is_high_stress | tojson }}
   }
   </script>
 
-  <!-- 素点→評価点 変換テーブル（男女別・全18下位尺度） -->
+  <!-- 素点換算表（職業性ストレス簡易調査票57項目）MHLW公式値 -->
   <script id="conversion-table" type="application/json">
   {
     "male": {
-      "A1_quantity":      [{"min":12,"max":15,"point":1},{"min":10,"max":11,"point":2},{"min":8,"max":9,"point":3},{"min":6,"max":7,"point":4},{"min":3,"max":5,"point":5}],
-      "A2_quality":       [{"min":12,"max":15,"point":1},{"min":10,"max":11,"point":2},{"min":8,"max":9,"point":3},{"min":6,"max":7,"point":4},{"min":3,"max":5,"point":5}],
-      "A3_physical":      [{"min":4,"max":4,"point":1},{"min":3,"max":3,"point":2},{"min":2,"max":2,"point":3},{"min":1,"max":1,"point":4}],
-      "A4_interpersonal": [{"min":9,"max":11,"point":1},{"min":7,"max":8,"point":2},{"min":5,"max":6,"point":3},{"min":3,"max":4,"point":4},{"min":1,"max":2,"point":5}],
-      "A5_environment":   [{"min":4,"max":4,"point":1},{"min":3,"max":3,"point":2},{"min":2,"max":2,"point":3},{"min":1,"max":1,"point":4}],
-      "A6_control":       [{"min":3,"max":5,"point":1},{"min":6,"max":7,"point":2},{"min":8,"max":9,"point":3},{"min":10,"max":11,"point":4},{"min":12,"max":15,"point":5}],
+      "A1_quantity":      [{"min":3,"max":5,"point":1},{"min":6,"max":7,"point":2},{"min":8,"max":9,"point":3},{"min":10,"max":11,"point":4},{"min":12,"max":12,"point":5}],
+      "A2_quality":       [{"min":3,"max":5,"point":1},{"min":6,"max":7,"point":2},{"min":8,"max":9,"point":3},{"min":10,"max":11,"point":4},{"min":12,"max":12,"point":5}],
+      "A3_physical":      [{"min":1,"max":1,"point":1},{"min":2,"max":2,"point":3},{"min":3,"max":3,"point":4},{"min":4,"max":4,"point":5}],
+      "A4_interpersonal": [{"min":3,"max":3,"point":1},{"min":4,"max":5,"point":2},{"min":6,"max":7,"point":3},{"min":8,"max":9,"point":4},{"min":10,"max":12,"point":5}],
+      "A5_environment":   [{"min":1,"max":1,"point":1},{"min":2,"max":2,"point":3},{"min":3,"max":3,"point":4},{"min":4,"max":4,"point":5}],
+      "A6_control":       [{"min":3,"max":4,"point":1},{"min":5,"max":6,"point":2},{"min":7,"max":8,"point":3},{"min":9,"max":10,"point":4},{"min":11,"max":12,"point":5}],
       "A7_skill":         [{"min":1,"max":1,"point":1},{"min":2,"max":2,"point":2},{"min":3,"max":3,"point":3},{"min":4,"max":4,"point":4}],
-      "A8_suitability":   [{"min":4,"max":4,"point":1},{"min":3,"max":3,"point":2},{"min":2,"max":2,"point":3},{"min":1,"max":1,"point":4}],
-      "A9_reward":        [{"min":4,"max":4,"point":1},{"min":3,"max":3,"point":2},{"min":2,"max":2,"point":3},{"min":1,"max":1,"point":4}],
+      "A8_suitability":   [{"min":1,"max":1,"point":1},{"min":2,"max":2,"point":2},{"min":3,"max":3,"point":3},{"min":4,"max":4,"point":5}],
+      "A9_reward":        [{"min":1,"max":1,"point":1},{"min":2,"max":2,"point":2},{"min":3,"max":3,"point":3},{"min":4,"max":4,"point":5}],
       "B1_vigor":         [{"min":3,"max":3,"point":1},{"min":4,"max":5,"point":2},{"min":6,"max":7,"point":3},{"min":8,"max":9,"point":4},{"min":10,"max":12,"point":5}],
-      "B2_irritation":    [{"min":9,"max":12,"point":1},{"min":7,"max":8,"point":2},{"min":5,"max":6,"point":3},{"min":3,"max":4,"point":4},{"min":1,"max":2,"point":5}],
-      "B3_fatigue":       [{"min":9,"max":12,"point":1},{"min":7,"max":8,"point":2},{"min":5,"max":6,"point":3},{"min":3,"max":4,"point":4},{"min":1,"max":2,"point":5}],
-      "B4_anxiety":       [{"min":9,"max":12,"point":1},{"min":7,"max":8,"point":2},{"min":5,"max":6,"point":3},{"min":3,"max":4,"point":4},{"min":1,"max":2,"point":5}],
-      "B5_depression":    [{"min":19,"max":24,"point":1},{"min":15,"max":18,"point":2},{"min":11,"max":14,"point":3},{"min":7,"max":10,"point":4},{"min":3,"max":6,"point":5}],
-      "B6_physical":      [{"min":35,"max":44,"point":1},{"min":28,"max":34,"point":2},{"min":21,"max":27,"point":3},{"min":14,"max":20,"point":4},{"min":7,"max":13,"point":5}],
-      "C1_boss":          [{"min":3,"max":4,"point":1},{"min":5,"max":6,"point":2},{"min":7,"max":9,"point":3},{"min":10,"max":11,"point":4},{"min":12,"max":12,"point":5}],
-      "C2_coworker":      [{"min":3,"max":4,"point":1},{"min":5,"max":6,"point":2},{"min":7,"max":9,"point":3},{"min":10,"max":11,"point":4},{"min":12,"max":12,"point":5}],
-      "C3_family":        [{"min":3,"max":4,"point":1},{"min":5,"max":6,"point":2},{"min":7,"max":9,"point":3},{"min":10,"max":11,"point":4},{"min":12,"max":12,"point":5}]
+      "B2_irritation":    [{"min":3,"max":3,"point":1},{"min":4,"max":5,"point":2},{"min":6,"max":7,"point":3},{"min":8,"max":9,"point":4},{"min":10,"max":12,"point":5}],
+      "B3_fatigue":       [{"min":3,"max":3,"point":1},{"min":4,"max":4,"point":2},{"min":5,"max":7,"point":3},{"min":8,"max":10,"point":4},{"min":11,"max":12,"point":5}],
+      "B4_anxiety":       [{"min":3,"max":3,"point":1},{"min":4,"max":4,"point":2},{"min":5,"max":7,"point":3},{"min":8,"max":9,"point":4},{"min":10,"max":12,"point":5}],
+      "B5_depression":    [{"min":6,"max":6,"point":1},{"min":7,"max":8,"point":2},{"min":9,"max":12,"point":3},{"min":13,"max":16,"point":4},{"min":17,"max":24,"point":5}],
+      "B6_physical":      [{"min":11,"max":11,"point":1},{"min":12,"max":15,"point":2},{"min":16,"max":21,"point":3},{"min":22,"max":26,"point":4},{"min":27,"max":44,"point":5}],
+      "C1_boss":          [{"min":3,"max":4,"point":1},{"min":5,"max":6,"point":2},{"min":7,"max":8,"point":3},{"min":9,"max":10,"point":4},{"min":11,"max":12,"point":5}],
+      "C2_coworker":      [{"min":3,"max":5,"point":1},{"min":6,"max":7,"point":2},{"min":8,"max":9,"point":3},{"min":10,"max":11,"point":4},{"min":12,"max":12,"point":5}],
+      "C3_family":        [{"min":3,"max":6,"point":1},{"min":7,"max":8,"point":2},{"min":9,"max":9,"point":3},{"min":10,"max":11,"point":4},{"min":12,"max":12,"point":5}],
+      "D1_satisfaction":  [{"min":2,"max":3,"point":1},{"min":4,"max":4,"point":2},{"min":5,"max":6,"point":3},{"min":7,"max":7,"point":4},{"min":8,"max":8,"point":5}]
     },
     "female": {
-      "A1_quantity":      [{"min":12,"max":15,"point":1},{"min":10,"max":11,"point":2},{"min":7,"max":9,"point":3},{"min":5,"max":6,"point":4},{"min":3,"max":4,"point":5}],
-      "A2_quality":       [{"min":12,"max":15,"point":1},{"min":10,"max":11,"point":2},{"min":7,"max":9,"point":3},{"min":5,"max":6,"point":4},{"min":3,"max":4,"point":5}],
-      "A3_physical":      [{"min":4,"max":4,"point":1},{"min":3,"max":3,"point":2},{"min":2,"max":2,"point":3},{"min":1,"max":1,"point":4}],
-      "A4_interpersonal": [{"min":9,"max":11,"point":1},{"min":7,"max":8,"point":2},{"min":5,"max":6,"point":3},{"min":3,"max":4,"point":4},{"min":1,"max":2,"point":5}],
-      "A5_environment":   [{"min":4,"max":4,"point":1},{"min":3,"max":3,"point":2},{"min":2,"max":2,"point":3},{"min":1,"max":1,"point":4}],
-      "A6_control":       [{"min":3,"max":5,"point":1},{"min":6,"max":7,"point":2},{"min":8,"max":9,"point":3},{"min":10,"max":11,"point":4},{"min":12,"max":15,"point":5}],
+      "A1_quantity":      [{"min":3,"max":4,"point":1},{"min":5,"max":6,"point":2},{"min":7,"max":9,"point":3},{"min":10,"max":11,"point":4},{"min":12,"max":12,"point":5}],
+      "A2_quality":       [{"min":3,"max":4,"point":1},{"min":5,"max":6,"point":2},{"min":7,"max":8,"point":3},{"min":9,"max":10,"point":4},{"min":11,"max":12,"point":5}],
+      "A3_physical":      [{"min":1,"max":1,"point":1},{"min":2,"max":2,"point":3},{"min":3,"max":3,"point":4},{"min":4,"max":4,"point":5}],
+      "A4_interpersonal": [{"min":3,"max":3,"point":1},{"min":4,"max":5,"point":2},{"min":6,"max":7,"point":3},{"min":8,"max":9,"point":4},{"min":10,"max":12,"point":5}],
+      "A5_environment":   [{"min":1,"max":1,"point":1},{"min":2,"max":2,"point":3},{"min":3,"max":3,"point":4},{"min":4,"max":4,"point":5}],
+      "A6_control":       [{"min":3,"max":3,"point":1},{"min":4,"max":5,"point":2},{"min":6,"max":8,"point":3},{"min":9,"max":10,"point":4},{"min":11,"max":12,"point":5}],
       "A7_skill":         [{"min":1,"max":1,"point":1},{"min":2,"max":2,"point":2},{"min":3,"max":3,"point":3},{"min":4,"max":4,"point":4}],
-      "A8_suitability":   [{"min":4,"max":4,"point":1},{"min":3,"max":3,"point":2},{"min":2,"max":2,"point":3},{"min":1,"max":1,"point":4}],
-      "A9_reward":        [{"min":4,"max":4,"point":1},{"min":3,"max":3,"point":2},{"min":2,"max":2,"point":3},{"min":1,"max":1,"point":4}],
+      "A8_suitability":   [{"min":1,"max":1,"point":1},{"min":2,"max":2,"point":2},{"min":3,"max":3,"point":3},{"min":4,"max":4,"point":5}],
+      "A9_reward":        [{"min":1,"max":1,"point":1},{"min":2,"max":2,"point":2},{"min":3,"max":3,"point":3},{"min":4,"max":4,"point":5}],
       "B1_vigor":         [{"min":3,"max":3,"point":1},{"min":4,"max":5,"point":2},{"min":6,"max":7,"point":3},{"min":8,"max":9,"point":4},{"min":10,"max":12,"point":5}],
-      "B2_irritation":    [{"min":9,"max":12,"point":1},{"min":7,"max":8,"point":2},{"min":5,"max":6,"point":3},{"min":3,"max":4,"point":4},{"min":1,"max":2,"point":5}],
-      "B3_fatigue":       [{"min":9,"max":12,"point":1},{"min":7,"max":8,"point":2},{"min":5,"max":6,"point":3},{"min":3,"max":4,"point":4},{"min":1,"max":2,"point":5}],
-      "B4_anxiety":       [{"min":9,"max":12,"point":1},{"min":7,"max":8,"point":2},{"min":5,"max":6,"point":3},{"min":3,"max":4,"point":4},{"min":1,"max":2,"point":5}],
-      "B5_depression":    [{"min":19,"max":24,"point":1},{"min":15,"max":18,"point":2},{"min":11,"max":14,"point":3},{"min":7,"max":10,"point":4},{"min":3,"max":6,"point":5}],
-      "B6_physical":      [{"min":35,"max":44,"point":1},{"min":28,"max":34,"point":2},{"min":21,"max":27,"point":3},{"min":14,"max":20,"point":4},{"min":7,"max":13,"point":5}],
-      "C1_boss":          [{"min":3,"max":4,"point":1},{"min":5,"max":6,"point":2},{"min":7,"max":9,"point":3},{"min":10,"max":11,"point":4},{"min":12,"max":12,"point":5}],
-      "C2_coworker":      [{"min":3,"max":4,"point":1},{"min":5,"max":6,"point":2},{"min":7,"max":9,"point":3},{"min":10,"max":11,"point":4},{"min":12,"max":12,"point":5}],
-      "C3_family":        [{"min":3,"max":4,"point":1},{"min":5,"max":6,"point":2},{"min":7,"max":9,"point":3},{"min":10,"max":11,"point":4},{"min":12,"max":12,"point":5}]
+      "B2_irritation":    [{"min":3,"max":3,"point":1},{"min":4,"max":5,"point":2},{"min":6,"max":8,"point":3},{"min":9,"max":10,"point":4},{"min":11,"max":12,"point":5}],
+      "B3_fatigue":       [{"min":3,"max":3,"point":1},{"min":4,"max":5,"point":2},{"min":6,"max":8,"point":3},{"min":9,"max":11,"point":4},{"min":12,"max":12,"point":5}],
+      "B4_anxiety":       [{"min":3,"max":3,"point":1},{"min":4,"max":4,"point":2},{"min":5,"max":7,"point":3},{"min":8,"max":10,"point":4},{"min":11,"max":12,"point":5}],
+      "B5_depression":    [{"min":6,"max":6,"point":1},{"min":7,"max":8,"point":2},{"min":9,"max":12,"point":3},{"min":13,"max":17,"point":4},{"min":18,"max":24,"point":5}],
+      "B6_physical":      [{"min":11,"max":13,"point":1},{"min":14,"max":17,"point":2},{"min":18,"max":23,"point":3},{"min":24,"max":29,"point":4},{"min":30,"max":44,"point":5}],
+      "C1_boss":          [{"min":3,"max":3,"point":1},{"min":4,"max":5,"point":2},{"min":6,"max":7,"point":3},{"min":8,"max":10,"point":4},{"min":11,"max":12,"point":5}],
+      "C2_coworker":      [{"min":3,"max":5,"point":1},{"min":6,"max":7,"point":2},{"min":8,"max":9,"point":3},{"min":10,"max":11,"point":4},{"min":12,"max":12,"point":5}],
+      "C3_family":        [{"min":3,"max":6,"point":1},{"min":7,"max":8,"point":2},{"min":9,"max":9,"point":3},{"min":10,"max":11,"point":4},{"min":12,"max":12,"point":5}],
+      "D1_satisfaction":  [{"min":2,"max":3,"point":1},{"min":4,"max":4,"point":2},{"min":5,"max":6,"point":3},{"min":7,"max":7,"point":4},{"min":8,"max":8,"point":5}]
     }
   }
   </script>
 
-  {% raw %}<script type="text/babel">
+{% raw %}<script type="text/babel">
+  try {
     // ── データ読み込み ────────────────────────────────────
     const answers = JSON.parse(document.getElementById('answers-data').textContent);
     const meta    = JSON.parse(document.getElementById('meta-data').textContent);
-    const conversionTable = JSON.parse(document.getElementById('conversion-table').textContent);
+    const CT      = JSON.parse(document.getElementById('conversion-table').textContent);
 
-    // ── calculateStressProfile ────────────────────────────
-    function calculateStressProfile(q, gender) {
-      const rawScores = {
+    // ── 素点換算（評価点取得）────────────────────────────
+    function getEP(gender, key, raw) {
+      const table = CT[gender]?.[key];
+      if (!table) return 3;
+      const match = table.find(t => raw >= t.min && raw <= t.max);
+      return match ? match.point : 3;
+    }
+
+    // ── 素点計算 & 評価点計算 ────────────────────────────
+    function calcProfile(q, gender) {
+      const g = gender || 'male';
+      // 素点（MHLW 57問マッピング）
+      const raw = {
         A1_quantity:      15 - (q.q1  + q.q2  + q.q3),
         A2_quality:       15 - (q.q4  + q.q5  + q.q6),
         A3_physical:       5 -  q.q7,
-        A6_control:       15 - (q.q8  + q.q9  + q.q10),
-        A7_skill:               q.q11,
         A4_interpersonal: 10 - (q.q12 + q.q13) + q.q14,
         A5_environment:    5 -  q.q15,
+        A6_control:       15 - (q.q8  + q.q9  + q.q10),
+        A7_skill:               q.q11,
         A8_suitability:    5 -  q.q16,
         A9_reward:         5 -  q.q17,
         B1_vigor:          q.q18 + q.q19 + q.q20,
@@ -99,273 +114,310 @@
         B3_fatigue:        q.q24 + q.q25 + q.q26,
         B4_anxiety:        q.q27 + q.q28 + q.q29,
         B5_depression:     q.q30 + q.q31 + q.q32 + q.q33 + q.q34 + q.q35,
-        B6_physical:       q.q36+q.q37+q.q38+q.q39+q.q40+q.q41+q.q42+q.q43+q.q44+q.q45+q.q46,
+        B6_physical:       q.q36 + q.q37 + q.q38 + q.q39 + q.q40 + q.q41 +
+                           q.q42 + q.q43 + q.q44 + q.q45 + q.q46,
         C1_boss:     15 - (q.q47 + q.q50 + q.q53),
         C2_coworker: 15 - (q.q48 + q.q51 + q.q54),
         C3_family:   15 - (q.q49 + q.q52 + q.q55),
+        D1_satisfaction: 10 - (q.q56 + q.q57),
       };
-      const getEvalPoint = (key, raw) => {
-        const table = conversionTable[gender]?.[key];
-        if (!table) return 3;
-        const match = table.find(t => raw >= t.min && raw <= t.max);
-        return match ? match.point : 3;
-      };
-      const evalScores = {};
-      let sumA = 0, sumB = 0, sumC = 0;
-      for (const [key, raw] of Object.entries(rawScores)) {
-        const pt = getEvalPoint(key, raw);
-        evalScores[key] = pt;
-        if (key.startsWith('A')) sumA += pt;
-        if (key.startsWith('B')) sumB += pt;
-        if (key.startsWith('C')) sumC += pt;
+      // 評価点（1〜5, MHLW 素点換算表に準拠）
+      const ep = {};
+      for (const [key, val] of Object.entries(raw)) {
+        ep[key] = getEP(g, key, val);
       }
-      const sumAC = sumA + sumC;
-      const isHighStress = sumB <= 12 || (sumB <= 17 && sumAC <= 26);
+      // ドメイン合計（表示用）
+      const sumA = ep.A1_quantity + ep.A2_quality + ep.A3_physical +
+                   ep.A4_interpersonal + ep.A5_environment + ep.A6_control +
+                   ep.A7_skill + ep.A8_suitability + ep.A9_reward;
+      const sumB = ep.B1_vigor + ep.B2_irritation + ep.B3_fatigue +
+                   ep.B4_anxiety + ep.B5_depression + ep.B6_physical;
+      const sumC = ep.C1_boss + ep.C2_coworker + ep.C3_family + ep.D1_satisfaction;
+
+      // レーダー用ヘルススコア（外周=良好/5点）
+      // ★印(良い方向が高い)はそのまま, 非★(悪い方向が高い)は 6-ep で反転
+      const h = (key, star) => star ? ep[key] : 6 - ep[key];
       return {
-        isHighStress,
-        summaryScores: { sumA, sumB, sumC, sumAC },
-        radarChartData: {
-          stressFactors:   [evalScores.A1_quantity,evalScores.A2_quality,evalScores.A3_physical,evalScores.A4_interpersonal,evalScores.A5_environment,evalScores.A6_control,evalScores.A7_skill,evalScores.A8_suitability,evalScores.A9_reward],
-          stressReactions: [evalScores.B1_vigor,evalScores.B2_irritation,evalScores.B3_fatigue,evalScores.B4_anxiety,evalScores.B5_depression,evalScores.B6_physical],
-          supports:        [evalScores.C1_boss,evalScores.C2_coworker,evalScores.C3_family],
-        },
+        ep, sumA, sumB, sumC,
+        factors: [
+          {label:'量的負担',    value: h('A1_quantity',false)},
+          {label:'質的負担',    value: h('A2_quality',false)},
+          {label:'身体的負担',  value: h('A3_physical',false)},
+          {label:'対人関係',    value: h('A4_interpersonal',false)},
+          {label:'職場環境',    value: h('A5_environment',false)},
+          {label:'コントロール★', value: h('A6_control',true)},
+          {label:'技能活用★',  value: h('A7_skill',true)},
+          {label:'適性度★',    value: h('A8_suitability',true)},
+          {label:'働きがい★',  value: h('A9_reward',true)},
+        ],
+        reactions: [
+          {label:'活気★',     value: h('B1_vigor',true)},
+          {label:'イライラ感', value: h('B2_irritation',false)},
+          {label:'疲労感',     value: h('B3_fatigue',false)},
+          {label:'不安感',     value: h('B4_anxiety',false)},
+          {label:'抑うつ感',   value: h('B5_depression',false)},
+          {label:'身体愁訴',   value: h('B6_physical',false)},
+        ],
+        supports: [
+          {label:'上司サポート★',       value: h('C1_boss',true)},
+          {label:'同僚サポート★',       value: h('C2_coworker',true)},
+          {label:'家族・友人★',         value: h('C3_family',true)},
+          {label:'仕事・生活満足度★',   value: h('D1_satisfaction',true)},
+        ],
       };
     }
 
-    // ── SVG レーダーチャート（外部ライブラリ不要） ─────────
+    // ── SVG レーダーチャート ─────────────────────────────
     function SVGRadar({ title, data, isHigh }) {
-      const color  = isHigh ? '#dc2626' : '#559018';
-      const fill   = isHigh ? 'rgba(220,38,38,0.18)' : 'rgba(85,144,24,0.22)';
-      const cx = 110, cy = 110, maxR = 85, levels = 5, n = data.length;
+      const color = isHigh ? '#dc2626' : '#559018';
+      const fill  = isHigh ? 'rgba(220,38,38,0.18)' : 'rgba(85,144,24,0.22)';
+      const cx = 115, cy = 115, maxR = 88, n = data.length;
 
-      // グリッド・軸の座標を計算
-      const angle = (i) => (Math.PI * 2 * i) / n - Math.PI / 2;
-      const pt = (i, r) => [
-        cx + r * Math.cos(angle(i)),
-        cy + r * Math.sin(angle(i)),
-      ];
+      const angle = i => (Math.PI * 2 * i) / n - Math.PI / 2;
+      const pt    = (i, r) => [cx + r * Math.cos(angle(i)), cy + r * Math.sin(angle(i))];
 
-      // データポリゴン
-      const polyPts = data.map((d, i) => {
-        const r = (d.value / 5) * maxR;
+      const grids = [1,2,3,4,5].map(lv => {
+        const r = (maxR / 5) * lv;
+        const pts = data.map((_,i) => pt(i,r).join(',')).join(' ');
+        return <polygon key={lv} points={pts} fill={lv===1?'rgba(220,38,38,0.06)':'none'}
+                 stroke={lv===1?'#fca5a5':'#d1d5db'} strokeWidth={lv===1?1.2:0.7} />;
+      });
+
+      const axes = data.map((_,i) => {
+        const [x,y] = pt(i, maxR);
+        return <line key={i} x1={cx} y1={cy} x2={x} y2={y} stroke="#e5e7eb" strokeWidth="0.8"/>;
+      });
+
+      const polyPts = data.map((d,i) => {
+        const r = Math.max(0, Math.min(5, d.value || 1)) / 5 * maxR;
         return pt(i, r).join(',');
       }).join(' ');
 
-      // グリッド（5段階）
-      const grids = Array.from({ length: levels }, (_, li) => {
-        const r = (maxR / levels) * (li + 1);
-        const pts = Array.from({ length: n }, (_, i) => pt(i, r).join(',')).join(' ');
-        return <polygon key={li} points={pts} fill="none" stroke="#d1d5db" strokeWidth="0.8" />;
+      const dots = data.map((d,i) => {
+        const r = Math.max(0, Math.min(5, d.value || 1)) / 5 * maxR;
+        const [x,y] = pt(i, r);
+        return <circle key={i} cx={x} cy={y} r="3.5" fill={color} stroke="white" strokeWidth="1"/>;
       });
 
-      // 軸線
-      const axes = data.map((_, i) => {
-        const [x, y] = pt(i, maxR);
-        return <line key={i} x1={cx} y1={cy} x2={x} y2={y} stroke="#d1d5db" strokeWidth="0.8" />;
-      });
-
-      // ラベル
-      const labels = data.map((d, i) => {
-        const [x, y] = pt(i, maxR + 16);
-        const anchor = x < cx - 4 ? 'end' : x > cx + 4 ? 'start' : 'middle';
-        const lines = d.label.length > 5 ? [d.label.slice(0,5), d.label.slice(5)] : [d.label];
+      const labels = data.map((d,i) => {
+        const [x,y] = pt(i, maxR + 18);
+        const anchor = x < cx-5 ? 'end' : x > cx+5 ? 'start' : 'middle';
+        const lines = d.label.length > 6 ? [d.label.slice(0,5), d.label.slice(5)] : [d.label];
         return (
-          <text key={i} x={x} y={y} textAnchor={anchor} fontSize="9" fill="#374151" dominantBaseline="middle">
-            {lines.map((l, j) => <tspan key={j} x={x} dy={j === 0 ? 0 : 11}>{l}</tspan>)}
+          <text key={i} x={x} y={y} textAnchor={anchor} fontSize="8.5" fill="#374151" dominantBaseline="middle">
+            {lines.map((l,j) => <tspan key={j} x={x} dy={j===0?0:11}>{l}</tspan>)}
           </text>
         );
-      });
-
-      // スコアドット
-      const dots = data.map((d, i) => {
-        const r = (d.value / 5) * maxR;
-        const [x, y] = pt(i, r);
-        return <circle key={i} cx={x} cy={y} r="3" fill={color} />;
       });
 
       return (
         <div style={S.chartCard}>
           <div style={{...S.chartTitle, color}}>{title}</div>
-          <svg viewBox="0 0 220 220" width="100%" style={{display:'block'}}>
-            {grids}
-            {axes}
-            <polygon points={polyPts} fill={fill} stroke={color} strokeWidth="2" />
-            {dots}
-            {labels}
+          <svg viewBox="0 0 230 230" width="100%" style={{display:'block'}}>
+            {grids}{axes}
+            <polygon points={polyPts} fill={fill} stroke={color} strokeWidth="2"/>
+            {dots}{labels}
           </svg>
+          <div style={S.chartNote}>★ 外周 = 良好（5点）/ 中心 = 要注意（1点）</div>
         </div>
       );
     }
 
-    // ── メイン結果コンポーネント ──────────────────────────
-    function StressProfileResult({ isHighStress, summaryScores, radarChartData }) {
-      const { sumA, sumB, sumC, sumAC } = summaryScores;
+    // ── 評価点テーブル行 ─────────────────────────────────
+    function EpRow({ label, ep, star }) {
+      // 非★は低い点が良い（左=良）, ★は高い点が良い（右=良）
+      // 網掛け（要注意ゾーン）: 非★はcol4-5, ★はcol1-2
+      const cols = [1,2,3,4,5];
+      return (
+        <tr>
+          <td style={S.epLabel}>{label}{star ? ' ★' : ''}</td>
+          {cols.map(c => {
+            const active = ep === c;
+            const shade = star ? c <= 2 : c >= 4;
+            return (
+              <td key={c} style={{
+                ...S.epCell,
+                background: shade ? '#fee2e2' : (c===3?'#fef9ee':'white'),
+                fontWeight: active ? 700 : 400,
+                color: active ? (shade?'#dc2626':'#559018') : '#9ca3af',
+                fontSize: active ? 16 : 11,
+              }}>
+                {active ? '●' : '○'}
+              </td>
+            );
+          })}
+          <td style={{...S.epCell, fontWeight:700, color:'#374151', borderLeft:'2px solid #e5e7eb'}}>{ep}</td>
+        </tr>
+      );
+    }
 
-      const factors = [
-        {label:'量的負担',     value:radarChartData.stressFactors[0]},
-        {label:'質的負担',     value:radarChartData.stressFactors[1]},
-        {label:'身体的負担',   value:radarChartData.stressFactors[2]},
-        {label:'対人関係',     value:radarChartData.stressFactors[3]},
-        {label:'職場環境',     value:radarChartData.stressFactors[4]},
-        {label:'コントロール', value:radarChartData.stressFactors[5]},
-        {label:'技術活用',     value:radarChartData.stressFactors[6]},
-        {label:'適合性',       value:radarChartData.stressFactors[7]},
-        {label:'働きがい',     value:radarChartData.stressFactors[8]},
+    // ── メインコンポーネント ──────────────────────────────
+    function ResultPage() {
+      const isHigh = meta.is_high_stress;
+      const prof   = calcProfile(answers, 'male');
+      const { ep, sumA, sumB, sumC } = prof;
+
+      const aRows = [
+        {label:'心理的な仕事の負担（量）', key:'A1_quantity',     star:false},
+        {label:'心理的な仕事の負担（質）', key:'A2_quality',      star:false},
+        {label:'自覚的な身体的負担度',     key:'A3_physical',     star:false},
+        {label:'職場の対人関係でのストレス',key:'A4_interpersonal',star:false},
+        {label:'職場環境によるストレス',   key:'A5_environment',  star:false},
+        {label:'仕事のコントロール度',     key:'A6_control',      star:true},
+        {label:'技能の活用度',             key:'A7_skill',        star:true},
+        {label:'仕事の適性度',             key:'A8_suitability',  star:true},
+        {label:'働きがい',                 key:'A9_reward',       star:true},
       ];
-      const reactions = [
-        {label:'活気',       value:radarChartData.stressReactions[0]},
-        {label:'イライラ感', value:radarChartData.stressReactions[1]},
-        {label:'疲労感',     value:radarChartData.stressReactions[2]},
-        {label:'不安感',     value:radarChartData.stressReactions[3]},
-        {label:'抑うつ感',   value:radarChartData.stressReactions[4]},
-        {label:'身体愁訴',   value:radarChartData.stressReactions[5]},
+      const bRows = [
+        {label:'活気',     key:'B1_vigor',      star:true},
+        {label:'イライラ感',key:'B2_irritation', star:false},
+        {label:'疲労感',   key:'B3_fatigue',    star:false},
+        {label:'不安感',   key:'B4_anxiety',    star:false},
+        {label:'抑うつ感', key:'B5_depression', star:false},
+        {label:'身体愁訴', key:'B6_physical',   star:false},
       ];
-      const supports = [
-        {label:'上司サポート',       value:radarChartData.supports[0]},
-        {label:'同僚サポート',       value:radarChartData.supports[1]},
-        {label:'家族・友人サポート', value:radarChartData.supports[2]},
+      const cRows = [
+        {label:'上司からのサポート',     key:'C1_boss',         star:true},
+        {label:'同僚からのサポート',     key:'C2_coworker',     star:true},
+        {label:'家族や友人からのサポート',key:'C3_family',       star:true},
+        {label:'仕事や生活の満足度',     key:'D1_satisfaction', star:true},
       ];
 
       return (
-        <div style={S.wrapper}>
-          {/* ページヘッダー */}
-          <div style={S.pageHeader}>
-            <div style={S.headerLeft}>
-              <div style={S.headerLogo}>STRESS CHECK PROGRAM</div>
-              <h1 style={S.pageTitle}>ストレスプロフィール（個人結果）</h1>
-              <p style={S.pageSub}>※ この結果は目安です。詳細は産業医・保健師にご相談ください。</p>
+        <div style={S.wrap}>
+          {/* ヘッダー */}
+          <div style={S.header}>
+            <div style={S.hl}>
+              <div style={S.logo}>STRESS CHECK PROGRAM</div>
+              <h1 style={S.h1}>あなたのストレスプロフィール</h1>
+              <p style={S.sub}>※ この結果は目安です。詳細は産業医・保健師にご相談ください。</p>
             </div>
-            <div style={S.headerRight}>
-              <div style={S.metaRow}><span style={S.metaLabel}>氏名</span><span style={S.metaValue}>{meta.name} 様</span></div>
-              <div style={S.metaRow}><span style={S.metaLabel}>所属</span><span style={S.metaValue}>{meta.workplace_name}</span></div>
-              <div style={S.metaRow}><span style={S.metaLabel}>実施日</span><span style={S.metaValue}>{meta.exam_date}</span></div>
-              <div style={S.metaRow}><span style={S.metaLabel}>整理番号</span><span style={{...S.metaValue,fontFamily:'monospace',fontWeight:700}}>{meta.ref_number}</span></div>
+            <div style={S.hr}>
+              <div style={S.mRow}><span style={S.mL}>氏名</span><span style={S.mV}>{meta.name} 様</span></div>
+              <div style={S.mRow}><span style={S.mL}>所属</span><span style={S.mV}>{meta.workplace_name}</span></div>
+              <div style={S.mRow}><span style={S.mL}>実施日</span><span style={S.mV}>{meta.exam_date}</span></div>
+              <div style={S.mRow}><span style={S.mL}>整理番号</span><span style={{...S.mV,fontFamily:'monospace',fontWeight:700}}>{meta.ref_number}</span></div>
             </div>
           </div>
 
           {/* 判定バナー */}
-          {isHighStress ? (
-            <div style={{...S.banner,...S.bannerHigh}}>
-              <span style={S.bannerIcon}>⚠️</span>
+          {isHigh ? (
+            <div style={{...S.banner,...S.bannerRed}}>
+              <span style={S.icon}>⚠️</span>
               <div>
-                <div style={{...S.bannerHeading,color:'#991b1b'}}>高ストレス者に該当します</div>
-                <div style={S.bannerBody}>
-                  現在の結果から、ストレスが高い状態にあると考えられます。<br/>
-                  産業医との面接指導をご検討ください。申し出は任意であり、結果は本人の同意なく事業者に通知されません。
-                </div>
+                <div style={{...S.bHead,color:'#991b1b'}}>高ストレス者に該当します（面接指導の対象）</div>
+                <div style={S.bBody}>産業医との面接指導をご検討ください。申し出は任意であり、本人の同意なく事業者に通知されません。</div>
               </div>
             </div>
           ) : (
-            <div style={{...S.banner,...S.bannerOk}}>
-              <span style={S.bannerIcon}>✅</span>
+            <div style={{...S.banner,...S.bannerGreen}}>
+              <span style={S.icon}>✅</span>
               <div>
-                <div style={{...S.bannerHeading,color:'#166534'}}>ストレス状態は概ね良好です</div>
-                <div style={S.bannerBody}>
-                  現在のストレス状態に特に大きな問題は見られません。引き続きセルフケアを心がけましょう。
-                </div>
+                <div style={{...S.bHead,color:'#166534'}}>ストレス状態は概ね良好です（面接指導の対象外）</div>
+                <div style={S.bBody}>引き続きセルフケアを心がけましょう。気になることがあれば相談窓口をご活用ください。</div>
               </div>
             </div>
           )}
 
-          {/* レーダーチャート 3枚 */}
-          <div style={S.chartsRow}>
-            <SVGRadar title="① 仕事のストレス要因" data={factors}   isHigh={isHighStress} />
-            <SVGRadar title="② 心身のストレス反応"  data={reactions} isHigh={isHighStress} />
-            <SVGRadar title="③ 周囲のサポート"      data={supports}  isHigh={isHighStress} />
-          </div>
-          <div style={S.scaleLegend}>
-            <span style={{...S.scaleBadge,background:'#fef2f2',color:'#dc2626'}}>← 中心 = 1点（高ストレス）</span>
-            <span style={{...S.scaleBadge,background:'#f0f5e8',color:'#559018'}}>外周 = 5点（良好）→</span>
+          {/* レーダーチャート3枚 */}
+          <div style={S.charts}>
+            <SVGRadar title="ストレスの原因と考えられる因子" data={prof.factors}   isHigh={isHigh}/>
+            <SVGRadar title="ストレスによっておこる心身の反応"  data={prof.reactions} isHigh={isHigh}/>
+            <SVGRadar title="ストレス反応に影響を与える他の因子" data={prof.supports}  isHigh={isHigh}/>
           </div>
 
-          {/* スコア表 */}
-          <div style={S.tableWrap}>
-            <h3 style={S.sectionTitle}>詳細スコア</h3>
-            <table style={S.table}>
+          {/* 評価点テーブル */}
+          <div style={S.card}>
+            <h3 style={S.sec}>詳細スコア（評価点）</h3>
+            <p style={S.hint}>
+              網掛け赤＝要注意ゾーン。★印は高いほど良好、非★は低いほど良好。
+              評価点の列（低い/少ない ← 1〜5 → 高い/多い）
+            </p>
+            <table style={S.tbl}>
               <thead>
-                <tr>
-                  <th style={{...S.th,textAlign:'left'}}>領域</th>
-                  <th style={S.th}>得点</th>
-                  <th style={S.th}>範囲</th>
-                  <th style={{...S.th,textAlign:'left'}}>補足</th>
+                <tr style={{background:'#3d6e0a',color:'white'}}>
+                  <th style={{...S.th,textAlign:'left',width:'38%'}}>尺度</th>
+                  <th style={S.th}>低い<br/>少ない</th>
+                  <th style={S.th}>やや<br/>低い</th>
+                  <th style={S.th}>普通</th>
+                  <th style={S.th}>やや<br/>高い</th>
+                  <th style={S.th}>高い<br/>多い</th>
+                  <th style={{...S.th,borderLeft:'2px solid rgba(255,255,255,0.3)'}}>評価点</th>
                 </tr>
               </thead>
               <tbody>
-                {[
-                  {label:'領域A　仕事のストレス要因', val:sumA,  range:'9〜45点',  note:'高いほど良好'},
-                  {label:'領域B　心身のストレス反応',  val:sumB,  range:'6〜30点',  note:'高いほど良好'},
-                  {label:'領域C　周囲のサポート',      val:sumC,  range:'3〜15点',  note:'高いほどサポート豊富'},
-                  {label:'領域A＋C　合計',             val:sumAC, range:'12〜60点', note:'高ストレス判定の補助指標'},
-                ].map((r,i) => (
-                  <tr key={r.label} style={{background:i%2===0?'#f9fafb':'white'}}>
-                    <td style={S.td}>{r.label}</td>
-                    <td style={{...S.td,textAlign:'center',fontWeight:700,color:'#559018',fontSize:16}}>{r.val}</td>
-                    <td style={{...S.td,textAlign:'center',color:'#6b7280',fontSize:12}}>{r.range}</td>
-                    <td style={{...S.td,fontSize:12,color:'#6b7280'}}>{r.note}</td>
-                  </tr>
-                ))}
+                <tr><td colSpan={7} style={S.secRow}>【ストレスの原因と考えられる因子】<span style={S.total}>合計 {sumA} 点</span></td></tr>
+                {aRows.map(r => <EpRow key={r.key} label={r.label} ep={ep[r.key]} star={r.star}/>)}
+                <tr><td colSpan={7} style={S.secRow}>【ストレスによっておこる心身の反応】<span style={S.total}>合計 {sumB} 点</span></td></tr>
+                {bRows.map(r => <EpRow key={r.key} label={r.label} ep={ep[r.key]} star={r.star}/>)}
+                <tr><td colSpan={7} style={S.secRow}>【ストレス反応に影響を与える他の因子】<span style={S.total}>合計 {sumC} 点</span></td></tr>
+                {cRows.map(r => <EpRow key={r.key} label={r.label} ep={ep[r.key]} star={r.star}/>)}
               </tbody>
             </table>
-            <div style={S.criteriaBox}>
-              <strong>判定基準：</strong>①領域B ≤ 12点、または ②領域B ≤ 17点 かつ 領域A＋C ≤ 26点
+            <div style={S.note}>
+              高ストレス者の判定は厚生労働省方式（その1）を採用。満足度（D1）は高ストレス判定に含みません。
             </div>
           </div>
 
           {/* 相談窓口 */}
-          <div style={S.consultBox}>
-            <h3 style={{...S.sectionTitle,marginBottom:12}}>📞 相談窓口のご案内</h3>
-            <p style={{fontSize:13,color:'#374151',marginBottom:12}}>
-              結果に不安がある場合や不調が続く場合は、一人で抱え込まずにご相談ください。
-            </p>
-            <div style={S.consultGrid}>
-              <div style={S.consultItem}><strong style={{color:'#3d6e0a'}}>【誰に】</strong><br/>産業医 または 保健師</div>
-              <div style={S.consultItem}><strong style={{color:'#3d6e0a'}}>【いつ】</strong><br/>結果通知後、1ヶ月以内を目安に</div>
-              <div style={S.consultItem}><strong style={{color:'#3d6e0a'}}>【どうやって】</strong><br/>人事部 健康管理担当へご連絡</div>
+          <div style={S.card}>
+            <h3 style={{...S.sec,marginBottom:12}}>📞 相談窓口のご案内</h3>
+            <div style={S.cGrid}>
+              <div style={S.cItem}><strong style={{color:'#3d6e0a'}}>【誰に】</strong><br/>産業医 または 保健師</div>
+              <div style={S.cItem}><strong style={{color:'#3d6e0a'}}>【いつ】</strong><br/>結果通知後、1ヶ月以内を目安に</div>
+              <div style={S.cItem}><strong style={{color:'#3d6e0a'}}>【どうやって】</strong><br/>人事部 健康管理担当へご連絡</div>
             </div>
           </div>
         </div>
       );
     }
 
-    // ── スタイル定義 ──────────────────────────────────────
+    // ── スタイル ─────────────────────────────────────────
     const S = {
-      wrapper:     {fontFamily:"'Noto Sans JP',sans-serif",maxWidth:1100,margin:'0 auto',padding:'24px 16px 60px',background:'#f2f5ee',minHeight:'100vh'},
-      pageHeader:  {display:'flex',justifyContent:'space-between',alignItems:'flex-start',background:'#3d6e0a',borderRadius:12,padding:'20px 28px',marginBottom:20,flexWrap:'wrap',gap:16},
-      headerLeft:  {flex:'1 1 300px'},
-      headerLogo:  {fontSize:11,fontWeight:700,letterSpacing:'0.15em',color:'rgba(255,255,255,0.7)',marginBottom:6},
-      pageTitle:   {fontSize:20,fontWeight:700,color:'white',marginBottom:4},
-      pageSub:     {fontSize:11,color:'rgba(255,255,255,0.75)'},
-      headerRight: {flex:'0 0 auto',background:'rgba(255,255,255,0.12)',borderRadius:8,padding:'12px 16px',minWidth:220},
-      metaRow:     {display:'flex',gap:8,marginBottom:4,fontSize:13,color:'white'},
-      metaLabel:   {opacity:0.75,minWidth:56,flexShrink:0},
-      metaValue:   {fontWeight:600},
-      banner:      {display:'flex',alignItems:'flex-start',gap:16,padding:'16px 20px',borderRadius:10,marginBottom:24,borderWidth:1,borderStyle:'solid'},
-      bannerHigh:  {background:'#fef2f2',borderColor:'#fca5a5'},
-      bannerOk:    {background:'#f0fdf4',borderColor:'#86efac'},
-      bannerIcon:  {fontSize:26,flexShrink:0,marginTop:2},
-      bannerHeading:{fontSize:16,fontWeight:700,marginBottom:4},
-      bannerBody:  {fontSize:13,color:'#374151',lineHeight:1.7},
-      chartsRow:   {display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:16,marginBottom:12},
-      chartCard:   {background:'white',borderRadius:10,padding:'16px 8px 12px',boxShadow:'0 2px 8px rgba(0,0,0,0.07)'},
-      chartTitle:  {fontSize:13,fontWeight:700,textAlign:'center',marginBottom:4},
-      scaleLegend: {display:'flex',justifyContent:'center',gap:16,marginBottom:24},
-      scaleBadge:  {fontSize:11,padding:'4px 12px',borderRadius:20,fontWeight:600},
-      tableWrap:   {background:'white',borderRadius:10,padding:'20px 24px',boxShadow:'0 2px 8px rgba(0,0,0,0.07)',marginBottom:20},
-      sectionTitle:{fontSize:15,fontWeight:700,color:'#3d6e0a',marginBottom:12,paddingBottom:6,borderBottom:'2px solid #8cc030'},
-      table:       {width:'100%',borderCollapse:'collapse',fontSize:13},
-      th:          {padding:'10px 12px',background:'#3d6e0a',color:'white',fontWeight:600,fontSize:12,textAlign:'center'},
-      td:          {padding:'10px 12px',borderBottom:'1px solid #e5e7eb'},
-      criteriaBox: {marginTop:12,padding:'8px 12px',background:'#f9fafb',borderRadius:6,fontSize:11,color:'#6b7280',borderLeft:'3px solid #d1d5db'},
-      consultBox:  {background:'white',borderRadius:10,padding:'20px 24px',boxShadow:'0 2px 8px rgba(0,0,0,0.07)'},
-      consultGrid: {display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12},
-      consultItem: {background:'#f9fafb',borderRadius:8,padding:'14px 16px',fontSize:13,color:'#374151',lineHeight:1.7},
+      wrap:      {fontFamily:"'Noto Sans JP',sans-serif",maxWidth:1060,margin:'0 auto',padding:'24px 14px 60px',background:'#f2f5ee',minHeight:'100vh'},
+      header:    {display:'flex',justifyContent:'space-between',alignItems:'flex-start',background:'#3d6e0a',borderRadius:12,padding:'20px 26px',marginBottom:18,flexWrap:'wrap',gap:14},
+      hl:        {flex:'1 1 280px'},
+      logo:      {fontSize:10,fontWeight:700,letterSpacing:'0.15em',color:'rgba(255,255,255,0.65)',marginBottom:5},
+      h1:        {fontSize:19,fontWeight:700,color:'white',marginBottom:3},
+      sub:       {fontSize:10,color:'rgba(255,255,255,0.72)'},
+      hr:        {flex:'0 0 auto',background:'rgba(255,255,255,0.12)',borderRadius:8,padding:'12px 16px',minWidth:210},
+      mRow:      {display:'flex',gap:8,marginBottom:3,fontSize:12,color:'white'},
+      mL:        {opacity:0.72,minWidth:52,flexShrink:0},
+      mV:        {fontWeight:600},
+      banner:    {display:'flex',alignItems:'flex-start',gap:14,padding:'14px 18px',borderRadius:10,marginBottom:20,borderWidth:1,borderStyle:'solid'},
+      bannerRed: {background:'#fef2f2',borderColor:'#fca5a5'},
+      bannerGreen:{background:'#f0fdf4',borderColor:'#86efac'},
+      icon:      {fontSize:24,flexShrink:0,marginTop:1},
+      bHead:     {fontSize:15,fontWeight:700,marginBottom:3},
+      bBody:     {fontSize:12,color:'#374151',lineHeight:1.7},
+      charts:    {display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:14,marginBottom:18},
+      chartCard: {background:'white',borderRadius:10,padding:'14px 6px 8px',boxShadow:'0 2px 8px rgba(0,0,0,0.07)'},
+      chartTitle:{fontSize:12,fontWeight:700,textAlign:'center',marginBottom:2},
+      chartNote: {fontSize:9,textAlign:'center',color:'#9ca3af',marginTop:2},
+      card:      {background:'white',borderRadius:10,padding:'18px 22px',boxShadow:'0 2px 8px rgba(0,0,0,0.07)',marginBottom:16},
+      sec:       {fontSize:14,fontWeight:700,color:'#3d6e0a',marginBottom:8,paddingBottom:5,borderBottom:'2px solid #8cc030'},
+      hint:      {fontSize:11,color:'#6b7280',marginBottom:10},
+      tbl:       {width:'100%',borderCollapse:'collapse',fontSize:12},
+      th:        {padding:'8px 6px',fontWeight:600,fontSize:11,textAlign:'center'},
+      epLabel:   {padding:'7px 10px',borderBottom:'1px solid #f3f4f6',fontSize:12,color:'#374151'},
+      epCell:    {padding:'7px 4px',borderBottom:'1px solid #f3f4f6',textAlign:'center',width:'9%'},
+      secRow:    {padding:'8px 10px',background:'#f0f4e8',fontWeight:700,fontSize:12,color:'#3d6e0a'},
+      total:     {float:'right',fontWeight:700,fontSize:13,color:'#1a4d00'},
+      note:      {marginTop:10,padding:'7px 10px',background:'#f9fafb',borderRadius:6,fontSize:10,color:'#9ca3af',borderLeft:'3px solid #d1d5db'},
+      cGrid:     {display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10},
+      cItem:     {background:'#f9fafb',borderRadius:8,padding:'12px 14px',fontSize:12,color:'#374151',lineHeight:1.7},
     };
 
-    // ── エントリーポイント ─────────────────────────────────
-    const result = calculateStressProfile(answers, 'male');
-    ReactDOM.createRoot(document.getElementById('root')).render(
-      <StressProfileResult {...result} />
-    );
-  </script>{% endraw %}
+    // ── レンダリング ─────────────────────────────────────
+    ReactDOM.createRoot(document.getElementById('root')).render(<ResultPage/>);
+
+  } catch(e) {
+    document.getElementById('root').innerHTML =
+      '<div style="padding:40px;color:#dc2626;font-family:sans-serif;">' +
+      '<h2>表示エラー</h2><pre style="margin-top:12px;font-size:12px;">' +
+      e.message + '</pre></div>';
+    console.error('ResultPage error:', e);
+  }
+</script>{% endraw %}
 </body>
 </html>
