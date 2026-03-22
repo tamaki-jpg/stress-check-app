@@ -139,9 +139,16 @@
       // C領域: 全★なので直接合算（高sumC=サポート豊富）
       const sumC = ep.C1_boss + ep.C2_coworker + ep.C3_family + ep.D1_satisfaction;
 
-      // ── レーダー用ヘルススコア（MHLW準拠: ep直接使用、軸反転なし）──────
-      // MHLWは全軸でepをそのまま半径に使用する（外周=ep=5）
-      const health = (key) => ep[key];
+      // ── レーダー用ヘルススコア（MHLW準拠）─────────────────────────────
+      // 外周=良好(5点) / 中心=要注意(1点) の方向に統一
+      // ★軸: 高ep=良好 → ep直接使用
+      // 非★軸: 低ep=低ストレス=良好 → 6-ep で反転
+      const STAR_AXES = new Set([
+        'A6_control','A7_skill','A8_suitability','A9_reward',
+        'B1_vigor',
+        'C1_boss','C2_coworker','C3_family','D1_satisfaction'
+      ]);
+      const health = (key) => STAR_AXES.has(key) ? ep[key] : 6 - ep[key];
       return {
         ep, sumA, sumB, sumC,
         factors: [
@@ -182,7 +189,7 @@
       const pt    = (i, r) => [cx + r * Math.cos(angle(i)), cy + r * Math.sin(angle(i))];
 
       const grids = [1,2,3,4,5].map(lv => {
-        const r = ((lv - 1) / 4) * maxR;
+        const r = (maxR / 5) * lv;
         const pts = data.map((_,i) => pt(i,r).join(',')).join(' ');
         return <polygon key={lv} points={pts} fill={lv===1?'rgba(220,38,38,0.06)':'none'}
                  stroke={lv===1?'#fca5a5':'#d1d5db'} strokeWidth={lv===1?1.2:0.7} />;
