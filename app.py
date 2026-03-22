@@ -188,6 +188,8 @@ def submit_data():
 
     # 3. 結果画面に渡すデータをセッションに保存
     today_str = datetime.datetime.now().strftime('%Y-%m-%d')
+    # q1〜q57 の生の回答を抽出（フロントのReactで再計算するため）
+    raw_answers = {f'q{i}': int(data.get(f'q{i}', 3)) for i in range(1, 58)}
     session['result_data'] = {
         'employee_id': str(row_id),
         'name': data.get('name', ''),
@@ -197,7 +199,8 @@ def submit_data():
         'is_high_stress': analysis['is_high_stress'],
         'radar_scores': analysis['radar_scores'],
         'bars': analysis['bars'],
-        'advice_text': analysis['advice_text']
+        'advice_text': analysis['advice_text'],
+        'answers_json': json.dumps(raw_answers, ensure_ascii=False),
     }
     
     # 4. フロントエンドに「成功したから結果画面に飛んでね」と返す
