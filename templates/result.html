@@ -39,9 +39,9 @@
     "male": {
       "A1_quantity":      [{"min":3,"max":5,"point":1},{"min":6,"max":7,"point":2},{"min":8,"max":9,"point":3},{"min":10,"max":11,"point":4},{"min":12,"max":12,"point":5}],
       "A2_quality":       [{"min":3,"max":5,"point":1},{"min":6,"max":7,"point":2},{"min":8,"max":9,"point":3},{"min":10,"max":11,"point":4},{"min":12,"max":12,"point":5}],
-      "A3_physical":      [{"min":1,"max":1,"point":1},{"min":2,"max":2,"point":3},{"min":3,"max":3,"point":4},{"min":4,"max":4,"point":5}],
+      "A3_physical":      [{"min":1,"max":1,"point":1},{"min":2,"max":2,"point":2},{"min":3,"max":3,"point":3},{"min":4,"max":4,"point":4}],
       "A4_interpersonal": [{"min":3,"max":3,"point":1},{"min":4,"max":5,"point":2},{"min":6,"max":7,"point":3},{"min":8,"max":9,"point":4},{"min":10,"max":12,"point":5}],
-      "A5_environment":   [{"min":1,"max":1,"point":1},{"min":2,"max":2,"point":3},{"min":3,"max":3,"point":4},{"min":4,"max":4,"point":5}],
+      "A5_environment":   [{"min":1,"max":1,"point":1},{"min":2,"max":2,"point":2},{"min":3,"max":3,"point":3},{"min":4,"max":4,"point":4}],
       "A6_control":       [{"min":3,"max":4,"point":1},{"min":5,"max":6,"point":2},{"min":7,"max":8,"point":3},{"min":9,"max":10,"point":4},{"min":11,"max":12,"point":5}],
       "A7_skill":         [{"min":1,"max":1,"point":1},{"min":2,"max":2,"point":2},{"min":3,"max":3,"point":3},{"min":4,"max":4,"point":4}],
       "A8_suitability":   [{"min":1,"max":1,"point":1},{"min":2,"max":2,"point":2},{"min":3,"max":3,"point":3},{"min":4,"max":4,"point":5}],
@@ -60,9 +60,9 @@
     "female": {
       "A1_quantity":      [{"min":3,"max":4,"point":1},{"min":5,"max":6,"point":2},{"min":7,"max":9,"point":3},{"min":10,"max":11,"point":4},{"min":12,"max":12,"point":5}],
       "A2_quality":       [{"min":3,"max":4,"point":1},{"min":5,"max":6,"point":2},{"min":7,"max":8,"point":3},{"min":9,"max":10,"point":4},{"min":11,"max":12,"point":5}],
-      "A3_physical":      [{"min":1,"max":1,"point":1},{"min":2,"max":2,"point":3},{"min":3,"max":3,"point":4},{"min":4,"max":4,"point":5}],
+      "A3_physical":      [{"min":1,"max":1,"point":1},{"min":2,"max":2,"point":2},{"min":3,"max":3,"point":3},{"min":4,"max":4,"point":4}],
       "A4_interpersonal": [{"min":3,"max":3,"point":1},{"min":4,"max":5,"point":2},{"min":6,"max":7,"point":3},{"min":8,"max":9,"point":4},{"min":10,"max":12,"point":5}],
-      "A5_environment":   [{"min":1,"max":1,"point":1},{"min":2,"max":2,"point":3},{"min":3,"max":3,"point":4},{"min":4,"max":4,"point":5}],
+      "A5_environment":   [{"min":1,"max":1,"point":1},{"min":2,"max":2,"point":2},{"min":3,"max":3,"point":3},{"min":4,"max":4,"point":4}],
       "A6_control":       [{"min":3,"max":3,"point":1},{"min":4,"max":5,"point":2},{"min":6,"max":8,"point":3},{"min":9,"max":10,"point":4},{"min":11,"max":12,"point":5}],
       "A7_skill":         [{"min":1,"max":1,"point":1},{"min":2,"max":2,"point":2},{"min":3,"max":3,"point":3},{"min":4,"max":4,"point":4}],
       "A8_suitability":   [{"min":1,"max":1,"point":1},{"min":2,"max":2,"point":2},{"min":3,"max":3,"point":3},{"min":4,"max":4,"point":5}],
@@ -150,7 +150,7 @@
         'B1_vigor',
         'C1_boss','C2_coworker','C3_family','D1_satisfaction'
       ]);
-      const health = (key) => STAR_AXES.has(key) ? ep[key] : 6 - ep[key];
+      const health = (key) => ep[key];
       return {
         ep, sumA, sumB, sumC,
         factors: [
@@ -203,12 +203,12 @@
       });
 
       const polyPts = data.map((d,i) => {
-        const r = Math.max(0, (Math.min(5, d.value || 1) - 1) / 4) * maxR;
+        const r = (Math.min(5, Math.max(1, d.value || 1)) / 5) * maxR;
         return pt(i, r).join(',');
       }).join(' ');
 
       const dots = data.map((d,i) => {
-        const r = Math.max(0, (Math.min(5, d.value || 1) - 1) / 4) * maxR;
+        const r = (Math.min(5, Math.max(1, d.value || 1)) / 5) * maxR;
         const [x,y] = pt(i, r);
         return <circle key={i} cx={x} cy={y} r="3.5" fill={color} stroke="white" strokeWidth="1"/>;
       });
