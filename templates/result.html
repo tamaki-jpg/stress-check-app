@@ -139,16 +139,9 @@
       // C領域: 全★なので直接合算（高sumC=サポート豊富）
       const sumC = ep.C1_boss + ep.C2_coworker + ep.C3_family + ep.D1_satisfaction;
 
-      // ── レーダー用ヘルススコア（外周=良好/5点）──────────────────────────
-      // A領域: 変換後ep=高=良好 → そのまま使用（5=outer=good）
-      // B領域: B1★は高=良好, B2-B6非★は高=悪い → 6-ep
-      // C領域: 全★, 高=良好 → そのまま
-      const health = (key) => {
-        if (key.startsWith('A'))       return ep[key];          // A: high ep = good
-        if (key === 'B1_vigor')        return ep[key];          // B1★: high = good vitality
-        if (key.startsWith('B'))       return 6 - ep[key];      // B2-B6: high = bad reaction
-        return ep[key];                                          // C/D★: high = good support
-      };
+      // ── レーダー用ヘルススコア（MHLW準拠: ep直接使用、軸反転なし）──────
+      // MHLWは全軸でepをそのまま半径に使用する（外周=ep=5）
+      const health = (key) => ep[key];
       return {
         ep, sumA, sumB, sumC,
         factors: [
@@ -189,7 +182,7 @@
       const pt    = (i, r) => [cx + r * Math.cos(angle(i)), cy + r * Math.sin(angle(i))];
 
       const grids = [1,2,3,4,5].map(lv => {
-        const r = (maxR / 5) * lv;
+        const r = ((lv - 1) / 4) * maxR;
         const pts = data.map((_,i) => pt(i,r).join(',')).join(' ');
         return <polygon key={lv} points={pts} fill={lv===1?'rgba(220,38,38,0.06)':'none'}
                  stroke={lv===1?'#fca5a5':'#d1d5db'} strokeWidth={lv===1?1.2:0.7} />;
@@ -201,12 +194,12 @@
       });
 
       const polyPts = data.map((d,i) => {
-        const r = Math.max(0, Math.min(5, d.value || 1)) / 5 * maxR;
+        const r = Math.max(0, (Math.min(5, d.value || 1) - 1) / 4) * maxR;
         return pt(i, r).join(',');
       }).join(' ');
 
       const dots = data.map((d,i) => {
-        const r = Math.max(0, Math.min(5, d.value || 1)) / 5 * maxR;
+        const r = Math.max(0, (Math.min(5, d.value || 1) - 1) / 4) * maxR;
         const [x,y] = pt(i, r);
         return <circle key={i} cx={x} cy={y} r="3.5" fill={color} stroke="white" strokeWidth="1"/>;
       });
