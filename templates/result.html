@@ -132,9 +132,10 @@
       const sumA = (6-ep.A1_quantity) + (6-ep.A2_quality) + (6-ep.A3_physical) +
                    (6-ep.A4_interpersonal) + (6-ep.A5_environment) +
                    ep.A6_control + ep.A7_skill + ep.A8_suitability + ep.A9_reward;
-      // B領域: 全ep直接合算（高sumB=反応強い）
-      const sumB = ep.B1_vigor + ep.B2_irritation + ep.B3_fatigue +
-                   ep.B4_anxiety + ep.B5_depression + ep.B6_physical;
+      // B領域: 健康方向合算（MHLW公式: B1★はそのまま, 非★は6-ep変換）
+      // 例: B=(1,1,3,4,4,5) → 1+(6-1)+(6-3)+(6-4)+(6-4)+(6-5) = 14 ✓
+      const sumB = ep.B1_vigor + (6-ep.B2_irritation) + (6-ep.B3_fatigue) +
+                   (6-ep.B4_anxiety) + (6-ep.B5_depression) + (6-ep.B6_physical);
       // C領域: 全★なので直接合算（高sumC=サポート豊富）
       const sumC = ep.C1_boss + ep.C2_coworker + ep.C3_family + ep.D1_satisfaction;
 
