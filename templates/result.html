@@ -7,7 +7,6 @@
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;700&display=swap" rel="stylesheet">
   <script crossorigin src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/recharts@2.12.7/umd/Recharts.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -78,14 +77,6 @@
   </script>
 
   {% raw %}<script type="text/babel">
-    window.addEventListener('load', () => {
-    // CDN スクリプトが全て読み込まれてから実行（タイミング問題を回避）
-    const Recharts = window.Recharts || window._Recharts;
-    const {
-      RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
-      ResponsiveContainer, Tooltip,
-    } = Recharts;
-
     // ── データ読み込み ────────────────────────────────────
     const answers = JSON.parse(document.getElementById('answers-data').textContent);
     const meta    = JSON.parse(document.getElementById('meta-data').textContent);
@@ -141,28 +132,67 @@
       };
     }
 
-    // ── カラー定数 ────────────────────────────────────────
-    const G  = '#559018';
-    const GF = 'rgba(85,144,24,0.25)';
-    const R  = '#dc2626';
-    const RF = 'rgba(220,38,38,0.22)';
+    // ── SVG レーダーチャート（外部ライブラリ不要） ─────────
+    function SVGRadar({ title, data, isHigh }) {
+      const color  = isHigh ? '#dc2626' : '#559018';
+      const fill   = isHigh ? 'rgba(220,38,38,0.18)' : 'rgba(85,144,24,0.22)';
+      const cx = 110, cy = 110, maxR = 85, levels = 5, n = data.length;
 
-    // ── レーダーチャート ──────────────────────────────────
-    function StressRadar({ title, data, isHigh }) {
-      const color = isHigh ? R : G;
-      const fill  = isHigh ? RF : GF;
+      // グリッド・軸の座標を計算
+      const angle = (i) => (Math.PI * 2 * i) / n - Math.PI / 2;
+      const pt = (i, r) => [
+        cx + r * Math.cos(angle(i)),
+        cy + r * Math.sin(angle(i)),
+      ];
+
+      // データポリゴン
+      const polyPts = data.map((d, i) => {
+        const r = (d.value / 5) * maxR;
+        return pt(i, r).join(',');
+      }).join(' ');
+
+      // グリッド（5段階）
+      const grids = Array.from({ length: levels }, (_, li) => {
+        const r = (maxR / levels) * (li + 1);
+        const pts = Array.from({ length: n }, (_, i) => pt(i, r).join(',')).join(' ');
+        return <polygon key={li} points={pts} fill="none" stroke="#d1d5db" strokeWidth="0.8" />;
+      });
+
+      // 軸線
+      const axes = data.map((_, i) => {
+        const [x, y] = pt(i, maxR);
+        return <line key={i} x1={cx} y1={cy} x2={x} y2={y} stroke="#d1d5db" strokeWidth="0.8" />;
+      });
+
+      // ラベル
+      const labels = data.map((d, i) => {
+        const [x, y] = pt(i, maxR + 16);
+        const anchor = x < cx - 4 ? 'end' : x > cx + 4 ? 'start' : 'middle';
+        const lines = d.label.length > 5 ? [d.label.slice(0,5), d.label.slice(5)] : [d.label];
+        return (
+          <text key={i} x={x} y={y} textAnchor={anchor} fontSize="9" fill="#374151" dominantBaseline="middle">
+            {lines.map((l, j) => <tspan key={j} x={x} dy={j === 0 ? 0 : 11}>{l}</tspan>)}
+          </text>
+        );
+      });
+
+      // スコアドット
+      const dots = data.map((d, i) => {
+        const r = (d.value / 5) * maxR;
+        const [x, y] = pt(i, r);
+        return <circle key={i} cx={x} cy={y} r="3" fill={color} />;
+      });
+
       return (
         <div style={S.chartCard}>
-          <div style={S.chartTitle}>{title}</div>
-          <ResponsiveContainer width="100%" height={240}>
-            <RadarChart data={data} margin={{top:8,right:16,bottom:8,left:16}}>
-              <PolarGrid stroke="#d1d5db" />
-              <PolarAngleAxis dataKey="label" tick={{fontSize:10,fill:'#374151'}} />
-              <PolarRadiusAxis domain={[1,5]} tickCount={5} tick={{fontSize:8,fill:'#9ca3af'}} axisLine={false} />
-              <Radar dataKey="value" stroke={color} fill={fill} strokeWidth={2} dot={{r:3,fill:color}} />
-              <Tooltip formatter={v=>[`${v} 点`,'評価点']} contentStyle={{fontSize:12,borderRadius:6}} />
-            </RadarChart>
-          </ResponsiveContainer>
+          <div style={{...S.chartTitle, color}}>{title}</div>
+          <svg viewBox="0 0 220 220" width="100%" style={{display:'block'}}>
+            {grids}
+            {axes}
+            <polygon points={polyPts} fill={fill} stroke={color} strokeWidth="2" />
+            {dots}
+            {labels}
+          </svg>
         </div>
       );
     }
@@ -220,7 +250,7 @@
               <div>
                 <div style={{...S.bannerHeading,color:'#991b1b'}}>高ストレス者に該当します</div>
                 <div style={S.bannerBody}>
-                  現在の結果から、ストレスが高い状態にあると考えられます（高ストレス者に該当）。<br/>
+                  現在の結果から、ストレスが高い状態にあると考えられます。<br/>
                   産業医との面接指導をご検討ください。申し出は任意であり、結果は本人の同意なく事業者に通知されません。
                 </div>
               </div>
@@ -239,9 +269,9 @@
 
           {/* レーダーチャート 3枚 */}
           <div style={S.chartsRow}>
-            <StressRadar title="① 仕事のストレス要因" data={factors}   isHigh={isHighStress} />
-            <StressRadar title="② 心身のストレス反応"  data={reactions} isHigh={isHighStress} />
-            <StressRadar title="③ 周囲のサポート"      data={supports}  isHigh={isHighStress} />
+            <SVGRadar title="① 仕事のストレス要因" data={factors}   isHigh={isHighStress} />
+            <SVGRadar title="② 心身のストレス反応"  data={reactions} isHigh={isHighStress} />
+            <SVGRadar title="③ 周囲のサポート"      data={supports}  isHigh={isHighStress} />
           </div>
           <div style={S.scaleLegend}>
             <span style={{...S.scaleBadge,background:'#fef2f2',color:'#dc2626'}}>← 中心 = 1点（高ストレス）</span>
@@ -316,8 +346,8 @@
       bannerHeading:{fontSize:16,fontWeight:700,marginBottom:4},
       bannerBody:  {fontSize:13,color:'#374151',lineHeight:1.7},
       chartsRow:   {display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:16,marginBottom:12},
-      chartCard:   {background:'white',borderRadius:10,padding:'16px 8px 8px',boxShadow:'0 2px 8px rgba(0,0,0,0.07)'},
-      chartTitle:  {fontSize:13,fontWeight:700,color:'#3d6e0a',textAlign:'center',marginBottom:4},
+      chartCard:   {background:'white',borderRadius:10,padding:'16px 8px 12px',boxShadow:'0 2px 8px rgba(0,0,0,0.07)'},
+      chartTitle:  {fontSize:13,fontWeight:700,textAlign:'center',marginBottom:4},
       scaleLegend: {display:'flex',justifyContent:'center',gap:16,marginBottom:24},
       scaleBadge:  {fontSize:11,padding:'4px 12px',borderRadius:20,fontWeight:600},
       tableWrap:   {background:'white',borderRadius:10,padding:'20px 24px',boxShadow:'0 2px 8px rgba(0,0,0,0.07)',marginBottom:20},
@@ -336,7 +366,6 @@
     ReactDOM.createRoot(document.getElementById('root')).render(
       <StressProfileResult {...result} />
     );
-    }); // end window.addEventListener('load')
   </script>{% endraw %}
 </body>
 </html>
