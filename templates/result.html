@@ -28,7 +28,8 @@
     "exam_date":      {{ exam_date | tojson }},
     "ref_number":     {{ ref_number | tojson }},
     "employee_id":    {{ employee_id | tojson }},
-    "is_high_stress": {{ is_high_stress | tojson }}
+    "is_high_stress": {{ is_high_stress | tojson }},
+    "gender":         {{ gender | tojson }}
   }
   </script>
 
@@ -97,7 +98,8 @@
 
     // ── 素点計算 & 評価点計算 ────────────────────────────
     function calcProfile(q, gender) {
-      const g = gender || 'male';
+      // 性別マッピング: フォーム値 '男性'/'女性' → 変換表キー 'male'/'female'
+      const g = gender === '女性' ? 'female' : 'male';
       // 素点（MHLW 57問マッピング）
       const raw = {
         A1_quantity:      15 - (q.q1  + q.q2  + q.q3),
@@ -266,7 +268,7 @@
     // ── メインコンポーネント ──────────────────────────────
     function ResultPage() {
       const isHigh = meta.is_high_stress;
-      const prof   = calcProfile(answers, 'male');
+      const prof   = calcProfile(answers, meta.gender);
       const { ep, sumA, sumB, sumC } = prof;
 
       const aRows = [

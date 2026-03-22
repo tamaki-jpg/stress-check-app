@@ -201,6 +201,7 @@ def submit_data():
         'workplace_name': data.get('workplace_name', ''),
         'exam_date': today_str,
         'ref_number': f"SC-{row_id:04d}",
+        'gender': data.get('gender', ''),
         'is_high_stress': analysis['is_high_stress'],
         'radar_scores': analysis['radar_scores'],
         'bars': analysis['bars'],
