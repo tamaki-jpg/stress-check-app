@@ -78,6 +78,8 @@
   </script>
 
   {% raw %}<script type="text/babel">
+    // Recharts の UMD は環境によって _Recharts または Recharts で登録される
+    const Recharts = window.Recharts || window._Recharts;
     const {
       RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
       ResponsiveContainer, Tooltip,
