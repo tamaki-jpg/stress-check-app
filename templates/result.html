@@ -126,43 +126,54 @@
       for (const [key, val] of Object.entries(raw)) {
         ep[key] = getEP(g, key, val);
       }
-      // ドメイン合計（表示用）
-      const sumA = ep.A1_quantity + ep.A2_quality + ep.A3_physical +
-                   ep.A4_interpersonal + ep.A5_environment + ep.A6_control +
-                   ep.A7_skill + ep.A8_suitability + ep.A9_reward;
+      // ── ドメイン合計（MHLW公式表示方式）──────────────────────────────
+      // A領域: 非★(A1-A5)は「高ep=良好」なので表示上は6-epに変換しストレス量として合算
+      //        ★(A6-A9)はそのまま合算。高sumA=ストレス要因重い or バッファ小
+      const sumA = (6-ep.A1_quantity) + (6-ep.A2_quality) + (6-ep.A3_physical) +
+                   (6-ep.A4_interpersonal) + (6-ep.A5_environment) +
+                   ep.A6_control + ep.A7_skill + ep.A8_suitability + ep.A9_reward;
+      // B領域: 全ep直接合算（高sumB=反応強い）
       const sumB = ep.B1_vigor + ep.B2_irritation + ep.B3_fatigue +
                    ep.B4_anxiety + ep.B5_depression + ep.B6_physical;
+      // C領域: 全★なので直接合算（高sumC=サポート豊富）
       const sumC = ep.C1_boss + ep.C2_coworker + ep.C3_family + ep.D1_satisfaction;
 
-      // レーダー用ヘルススコア（外周=良好/5点）
-      // ★印(良い方向が高い)はそのまま, 非★(悪い方向が高い)は 6-ep で反転
-      const h = (key, star) => star ? ep[key] : 6 - ep[key];
+      // ── レーダー用ヘルススコア（外周=良好/5点）──────────────────────────
+      // A領域: 変換後ep=高=良好 → そのまま使用（5=outer=good）
+      // B領域: B1★は高=良好, B2-B6非★は高=悪い → 6-ep
+      // C領域: 全★, 高=良好 → そのまま
+      const health = (key) => {
+        if (key.startsWith('A'))       return ep[key];          // A: high ep = good
+        if (key === 'B1_vigor')        return ep[key];          // B1★: high = good vitality
+        if (key.startsWith('B'))       return 6 - ep[key];      // B2-B6: high = bad reaction
+        return ep[key];                                          // C/D★: high = good support
+      };
       return {
         ep, sumA, sumB, sumC,
         factors: [
-          {label:'量的負担',    value: h('A1_quantity',false)},
-          {label:'質的負担',    value: h('A2_quality',false)},
-          {label:'身体的負担',  value: h('A3_physical',false)},
-          {label:'対人関係',    value: h('A4_interpersonal',false)},
-          {label:'職場環境',    value: h('A5_environment',false)},
-          {label:'コントロール★', value: h('A6_control',true)},
-          {label:'技能活用★',  value: h('A7_skill',true)},
-          {label:'適性度★',    value: h('A8_suitability',true)},
-          {label:'働きがい★',  value: h('A9_reward',true)},
+          {label:'量的負担',       value: health('A1_quantity')},
+          {label:'質的負担',       value: health('A2_quality')},
+          {label:'身体的負担',     value: health('A3_physical')},
+          {label:'対人関係',       value: health('A4_interpersonal')},
+          {label:'職場環境',       value: health('A5_environment')},
+          {label:'コントロール★',  value: health('A6_control')},
+          {label:'技能活用★',     value: health('A7_skill')},
+          {label:'適性度★',       value: health('A8_suitability')},
+          {label:'働きがい★',     value: health('A9_reward')},
         ],
         reactions: [
-          {label:'活気★',     value: h('B1_vigor',true)},
-          {label:'イライラ感', value: h('B2_irritation',false)},
-          {label:'疲労感',     value: h('B3_fatigue',false)},
-          {label:'不安感',     value: h('B4_anxiety',false)},
-          {label:'抑うつ感',   value: h('B5_depression',false)},
-          {label:'身体愁訴',   value: h('B6_physical',false)},
+          {label:'活気★',        value: health('B1_vigor')},
+          {label:'イライラ感',    value: health('B2_irritation')},
+          {label:'疲労感',        value: health('B3_fatigue')},
+          {label:'不安感',        value: health('B4_anxiety')},
+          {label:'抑うつ感',      value: health('B5_depression')},
+          {label:'身体愁訴',      value: health('B6_physical')},
         ],
         supports: [
-          {label:'上司サポート★',       value: h('C1_boss',true)},
-          {label:'同僚サポート★',       value: h('C2_coworker',true)},
-          {label:'家族・友人★',         value: h('C3_family',true)},
-          {label:'仕事・生活満足度★',   value: h('D1_satisfaction',true)},
+          {label:'上司サポート★',      value: health('C1_boss')},
+          {label:'同僚サポート★',      value: health('C2_coworker')},
+          {label:'家族・友人★',        value: health('C3_family')},
+          {label:'仕事・生活満足度★',  value: health('D1_satisfaction')},
         ],
       };
     }
