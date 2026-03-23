@@ -128,17 +128,17 @@
       for (const [key, val] of Object.entries(raw)) {
         ep[key] = getEP(g, key, val);
       }
-      // ── ドメイン合計（方式その2: 単純ep合計）─────────────────────────
-      // 各領域の評価点をそのまま合算（高ストレス判定に使用する値と一致）
-      // 領域A: A1〜A9 ep合計（9〜45点）
-      const sumA = ep.A1_quantity + ep.A2_quality + ep.A3_physical +
-                   ep.A4_interpersonal + ep.A5_environment +
+      // ── ドメイン合計（画面表示用・厚労省公式方式その1と同じ計算）────────
+      // ※高ストレス判定（True/False）はバックエンド app.py が方式その2（ep合計）で実施済み
+      // 非★(A1-A5)は低ep=良好なので 6-ep に変換して合算、★はep直接
+      const sumA = (6-ep.A1_quantity) + (6-ep.A2_quality) + (6-ep.A3_physical) +
+                   (6-ep.A4_interpersonal) + (6-ep.A5_environment) +
                    ep.A6_control + ep.A7_skill + ep.A8_suitability + ep.A9_reward;
-      // 領域B: B1〜B6 ep合計（6〜30点）
-      const sumB = ep.B1_vigor + ep.B2_irritation + ep.B3_fatigue +
-                   ep.B4_anxiety + ep.B5_depression + ep.B6_physical;
-      // 領域C: C1〜C3 ep合計（3〜15点）※D1は高ストレス判定に使用しないため除外
-      const sumC = ep.C1_boss + ep.C2_coworker + ep.C3_family;
+      // B1★はそのまま、非★(B2-B6)は 6-ep 変換
+      const sumB = ep.B1_vigor + (6-ep.B2_irritation) + (6-ep.B3_fatigue) +
+                   (6-ep.B4_anxiety) + (6-ep.B5_depression) + (6-ep.B6_physical);
+      // C全★・D1★はそのまま合算（表示用なのでD1も含む）
+      const sumC = ep.C1_boss + ep.C2_coworker + ep.C3_family + ep.D1_satisfaction;
 
       // ── レーダー用ヘルススコア（MHLW公式準拠）──────────────────────────
       // 全軸で「外周=良好(5) / 中心=要注意(1)」に統一
