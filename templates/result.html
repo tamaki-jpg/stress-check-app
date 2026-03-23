@@ -185,7 +185,7 @@
     function SVGRadar({ title, data, isHigh }) {
       const color = isHigh ? '#dc2626' : '#559018';
       const fill  = isHigh ? 'rgba(220,38,38,0.18)' : 'rgba(85,144,24,0.22)';
-      const cx = 115, cy = 115, maxR = 88, n = data.length;
+      const cx = 160, cy = 150, maxR = 84, n = data.length;
 
       const angle = i => (Math.PI * 2 * i) / n - Math.PI / 2;
       const pt    = (i, r) => [cx + r * Math.cos(angle(i)), cy + r * Math.sin(angle(i))];
@@ -214,7 +214,7 @@
       });
 
       const labels = data.map((d,i) => {
-        const [x,y] = pt(i, maxR + 18);
+        const [x,y] = pt(i, maxR + 22);
         const anchor = x < cx-5 ? 'end' : x > cx+5 ? 'start' : 'middle';
         const lines = d.label.length > 6 ? [d.label.slice(0,5), d.label.slice(5)] : [d.label];
         return (
@@ -227,7 +227,7 @@
       return (
         <div style={S.chartCard}>
           <div style={{...S.chartTitle, color}}>{title}</div>
-          <svg viewBox="0 0 230 230" width="100%" style={{display:'block'}}>
+          <svg viewBox="0 0 320 300" width="100%" style={{display:'block'}}>
             {grids}{axes}
             <polygon points={polyPts} fill={fill} stroke={color} strokeWidth="2"/>
             {dots}{labels}
