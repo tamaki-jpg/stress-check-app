@@ -224,9 +224,11 @@ def index():
     workplaces = [dict(wp) for wp in workplaces_db]
     company_name      = get_setting('company_name', 'デモ企業')
     practitioner_name = get_setting('practitioner_name', '（未設定）')
+    practitioner_role = get_setting('practitioner_role', '')
     return render_template('index.html',
                            company_name=company_name,
                            practitioner_name=practitioner_name,
+                           practitioner_role=practitioner_role,
                            workplaces=workplaces)
 
 @app.route('/admin')
