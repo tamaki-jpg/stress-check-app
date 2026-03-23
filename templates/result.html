@@ -142,10 +142,15 @@
       const sumC = ep.C1_boss + ep.C2_coworker + ep.C3_family + ep.D1_satisfaction;
 
       // ── レーダー用ヘルススコア（MHLW公式準拠）──────────────────────────
-      // 全軸 ep をそのままプロット（MHLWプログラムと同一）
-      // 非★軸(A1-A5,B2-B6): 外周=高い/多い（負担大）、内側=低い/少ない（負担小）
-      // ★軸(A6-A9,B1,C1-C3,D1): 外周=高い/多い（良好）、内側=低い/少ない（要注意）
-      const health = (key) => ep[key];
+      // 全軸で「外周=良好(5) / 中心=要注意(1)」に統一
+      // 非★軸(A1-A5,B2-B6): 低ep=低負担=良好 → 6-ep で外周=良好に変換
+      // ★軸(A6-A9,B1,C1-C3,D1): 高ep=高リソース=良好 → ep直接使用
+      const STAR_AXES = new Set([
+        'A6_control','A7_skill','A8_suitability','A9_reward',
+        'B1_vigor',
+        'C1_boss','C2_coworker','C3_family','D1_satisfaction'
+      ]);
+      const health = (key) => STAR_AXES.has(key) ? ep[key] : 6 - ep[key];
       return {
         ep, sumA, sumB, sumC,
         factors: [
