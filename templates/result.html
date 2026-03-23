@@ -150,7 +150,7 @@
         'B1_vigor',
         'C1_boss','C2_coworker','C3_family','D1_satisfaction'
       ]);
-      const health = (key) => ep[key];
+      const health = (key) => STAR_AXES.has(key) ? ep[key] : 6 - ep[key];
       return {
         ep, sumA, sumB, sumC,
         factors: [
@@ -193,8 +193,8 @@
       const grids = [1,2,3,4,5].map(lv => {
         const r = (maxR / 5) * lv;
         const pts = data.map((_,i) => pt(i,r).join(',')).join(' ');
-        return <polygon key={lv} points={pts} fill={lv===1?'rgba(220,38,38,0.06)':'none'}
-                 stroke={lv===1?'#fca5a5':'#d1d5db'} strokeWidth={lv===1?1.2:0.7} />;
+        return <polygon key={lv} points={pts} fill={lv<=2?'rgba(220,38,38,0.06)':'none'}
+                 stroke={lv<=2?'#fca5a5':'#d1d5db'} strokeWidth={lv<=2?1.2:0.7} />;
       });
 
       const axes = data.map((_,i) => {
