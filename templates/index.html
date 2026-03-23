@@ -458,7 +458,7 @@
       <ul class="intro-list">
         <li>この検査は、労働安全衛生法に基づくものです。</li>
         <li>検査結果は、あなたの同意なく会社側に伝わることはありません。</li>
-        <li>検査の実施責任者は <strong>{{ practitioner_name }}</strong> です。</li>
+        <li>検査の実施責任者は <strong>{% if practitioner_role %}{{ practitioner_role }} {% endif %}{{ practitioner_name }}</strong> です。</li>
       </ul>
 
       <p class="intro-start-msg">それではさっそくストレスチェックを始めましょう！</p>
