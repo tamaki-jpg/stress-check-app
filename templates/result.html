@@ -159,13 +159,13 @@
           {label:'身体的負担',     value: health('A3_physical')},
           {label:'対人関係',       value: health('A4_interpersonal')},
           {label:'職場環境',       value: health('A5_environment')},
-          {label:'コントロール★',  value: health('A6_control')},
-          {label:'技能活用★',     value: health('A7_skill')},
-          {label:'適性度★',       value: health('A8_suitability')},
-          {label:'働きがい★',     value: health('A9_reward')},
+          {label:'コントロール',   value: health('A6_control')},
+          {label:'技能活用',      value: health('A7_skill')},
+          {label:'適性度',        value: health('A8_suitability')},
+          {label:'働きがい',      value: health('A9_reward')},
         ],
         reactions: [
-          {label:'活気★',        value: health('B1_vigor')},
+          {label:'活気',          value: health('B1_vigor')},
           {label:'イライラ感',    value: health('B2_irritation')},
           {label:'疲労感',        value: health('B3_fatigue')},
           {label:'不安感',        value: health('B4_anxiety')},
@@ -173,10 +173,10 @@
           {label:'身体愁訴',      value: health('B6_physical')},
         ],
         supports: [
-          {label:'上司サポート★',      value: health('C1_boss')},
-          {label:'同僚サポート★',      value: health('C2_coworker')},
-          {label:'家族・友人★',        value: health('C3_family')},
-          {label:'仕事・生活満足度★',  value: health('D1_satisfaction')},
+          {label:'上司サポート',       value: health('C1_boss')},
+          {label:'同僚サポート',       value: health('C2_coworker')},
+          {label:'家族・友人',         value: health('C3_family')},
+          {label:'仕事・生活満足度',   value: health('D1_satisfaction')},
         ],
       };
     }
@@ -232,7 +232,6 @@
             <polygon points={polyPts} fill={fill} stroke={color} strokeWidth="2"/>
             {dots}{labels}
           </svg>
-          <div style={S.chartNote}>★ 外周 = 良好（5点）/ 中心 = 要注意（1点）</div>
         </div>
       );
     }
@@ -339,6 +338,7 @@
             <SVGRadar title="ストレスによっておこる心身の反応"  data={prof.reactions} isHigh={isHigh}/>
             <SVGRadar title="ストレス反応に影響を与える他の因子" data={prof.supports}  isHigh={isHigh}/>
           </div>
+          <p style={S.chartGuide}>グラフが外側に広がるほど良好な状態です。逆に、中心の赤いエリアに近づくほど、ストレスが蓄積しているサインとなります。</p>
 
           {/* 評価点テーブル */}
           <div style={S.card}>
@@ -408,6 +408,7 @@
       chartCard: {background:'white',borderRadius:10,padding:'14px 6px 8px',boxShadow:'0 2px 8px rgba(0,0,0,0.07)'},
       chartTitle:{fontSize:12,fontWeight:700,textAlign:'center',marginBottom:2},
       chartNote: {fontSize:9,textAlign:'center',color:'#9ca3af',marginTop:2},
+      chartGuide:{fontSize:11,textAlign:'center',color:'#6b7280',marginTop:4,marginBottom:14,lineHeight:1.7},
       card:      {background:'white',borderRadius:10,padding:'18px 22px',boxShadow:'0 2px 8px rgba(0,0,0,0.07)',marginBottom:16},
       sec:       {fontSize:14,fontWeight:700,color:'#3d6e0a',marginBottom:8,paddingBottom:5,borderBottom:'2px solid #8cc030'},
       hint:      {fontSize:11,color:'#6b7280',marginBottom:10},
