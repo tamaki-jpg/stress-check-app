@@ -1,0 +1,11 @@
+.git
+.gitignore
+.env
+.venv
+venv/
+env/
+__pycache__/
+*.pyc
+stress_check.db
+node_modules/
+README.md

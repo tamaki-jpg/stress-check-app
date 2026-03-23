@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ストレスプロフィール（速報結果）</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;700&display=swap" rel="stylesheet">
+  <!-- React 18 + ReactDOM CDN -->
+  <script crossorigin src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"></script>
+  <!-- Recharts CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/recharts@2.12.7/umd/Recharts.js"></script>
+  <!-- Babel（JSX をブラウザで直接変換） -->
+  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Noto Sans JP', 'Helvetica Neue', sans-serif; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- ══════════════════════════════════════════════════
+       素点→評価点 変換テーブル（男女別・全18下位尺度）
+       ══════════════════════════════════════════════════ -->
+  <script id="conversion-table" type="application/json">
+  {
+    "male": {
+      "A1_quantity":      [{"min":12,"max":15,"point":1},{"min":10,"max":11,"point":2},{"min":8,"max":9,"point":3},{"min":6,"max":7,"point":4},{"min":3,"max":5,"point":5}],
+      "A2_quality":       [{"min":12,"max":15,"point":1},{"min":10,"max":11,"point":2},{"min":8,"max":9,"point":3},{"min":6,"max":7,"point":4},{"min":3,"max":5,"point":5}],
+      "A3_physical":      [{"min":4,"max":4,"point":1},{"min":3,"max":3,"point":2},{"min":2,"max":2,"point":3},{"min":1,"max":1,"point":4}],
+      "A4_interpersonal": [{"min":9,"max":11,"point":1},{"min":7,"max":8,"point":2},{"min":5,"max":6,"point":3},{"min":3,"max":4,"point":4},{"min":1,"max":2,"point":5}],
+      "A5_environment":   [{"min":4,"max":4,"point":1},{"min":3,"max":3,"point":2},{"min":2,"max":2,"point":3},{"min":1,"max":1,"point":4}],
+      "A6_control":       [{"min":3,"max":5,"point":1},{"min":6,"max":7,"point":2},{"min":8,"max":9,"point":3},{"min":10,"max":11,"point":4},{"min":12,"max":15,"point":5}],
+      "A7_skill":         [{"min":1,"max":1,"point":1},{"min":2,"max":2,"point":2},{"min":3,"max":3,"point":3},{"min":4,"max":4,"point":4}],
+      "A8_suitability":   [{"min":4,"max":4,"point":1},{"min":3,"max":3,"point":2},{"min":2,"max":2,"point":3},{"min":1,"max":1,"point":4}],
+      "A9_reward":        [{"min":4,"max":4,"point":1},{"min":3,"max":3,"point":2},{"min":2,"max":2,"point":3},{"min":1,"max":1,"point":4}],
+      "B1_vigor":         [{"min":3,"max":3,"point":1},{"min":4,"max":5,"point":2},{"min":6,"max":7,"point":3},{"min":8,"max":9,"point":4},{"min":10,"max":12,"point":5}],
+      "B2_irritation":    [{"min":9,"max":12,"point":1},{"min":7,"max":8,"point":2},{"min":5,"max":6,"point":3},{"min":3,"max":4,"point":4},{"min":1,"max":2,"point":5}],
+      "B3_fatigue":       [{"min":9,"max":12,"point":1},{"min":7,"max":8,"point":2},{"min":5,"max":6,"point":3},{"min":3,"max":4,"point":4},{"min":1,"max":2,"point":5}],
+      "B4_anxiety":       [{"min":9,"max":12,"point":1},{"min":7,"max":8,"point":2},{"min":5,"max":6,"point":3},{"min":3,"max":4,"point":4},{"min":1,"max":2,"point":5}],
+      "B5_depression":    [{"min":19,"max":24,"point":1},{"min":15,"max":18,"point":2},{"min":11,"max":14,"point":3},{"min":7,"max":10,"point":4},{"min":3,"max":6,"point":5}],
+      "B6_physical":      [{"min":35,"max":44,"point":1},{"min":28,"max":34,"point":2},{"min":21,"max":27,"point":3},{"min":14,"max":20,"point":4},{"min":7,"max":13,"point":5}],
+      "C1_boss":          [{"min":3,"max":4,"point":1},{"min":5,"max":6,"point":2},{"min":7,"max":9,"point":3},{"min":10,"max":11,"point":4},{"min":12,"max":12,"point":5}],
+      "C2_coworker":      [{"min":3,"max":4,"point":1},{"min":5,"max":6,"point":2},{"min":7,"max":9,"point":3},{"min":10,"max":11,"point":4},{"min":12,"max":12,"point":5}],
+      "C3_family":        [{"min":3,"max":4,"point":1},{"min":5,"max":6,"point":2},{"min":7,"max":9,"point":3},{"min":10,"max":11,"point":4},{"min":12,"max":12,"point":5}]
+    },
+    "female": {
+      "A1_quantity":      [{"min":12,"max":15,"point":1},{"min":10,"max":11,"point":2},{"min":7,"max":9,"point":3},{"min":5,"max":6,"point":4},{"min":3,"max":4,"point":5}],
+      "A2_quality":       [{"min":12,"max":15,"point":1},{"min":10,"max":11,"point":2},{"min":7,"max":9,"point":3},{"min":5,"max":6,"point":4},{"min":3,"max":4,"point":5}],
+      "A3_physical":      [{"min":4,"max":4,"point":1},{"min":3,"max":3,"point":2},{"min":2,"max":2,"point":3},{"min":1,"max":1,"point":4}],
+      "A4_interpersonal": [{"min":9,"max":11,"point":1},{"min":7,"max":8,"point":2},{"min":5,"max":6,"point":3},{"min":3,"max":4,"point":4},{"min":1,"max":2,"point":5}],
+      "A5_environment":   [{"min":4,"max":4,"point":1},{"min":3,"max":3,"point":2},{"min":2,"max":2,"point":3},{"min":1,"max":1,"point":4}],
+      "A6_control":       [{"min":3,"max":5,"point":1},{"min":6,"max":7,"point":2},{"min":8,"max":9,"point":3},{"min":10,"max":11,"point":4},{"min":12,"max":15,"point":5}],
+      "A7_skill":         [{"min":1,"max":1,"point":1},{"min":2,"max":2,"point":2},{"min":3,"max":3,"point":3},{"min":4,"max":4,"point":4}],
+      "A8_suitability":   [{"min":4,"max":4,"point":1},{"min":3,"max":3,"point":2},{"min":2,"max":2,"point":3},{"min":1,"max":1,"point":4}],
+      "A9_reward":        [{"min":4,"max":4,"point":1},{"min":3,"max":3,"point":2},{"min":2,"max":2,"point":3},{"min":1,"max":1,"point":4}],
+      "B1_vigor":         [{"min":3,"max":3,"point":1},{"min":4,"max":5,"point":2},{"min":6,"max":7,"point":3},{"min":8,"max":9,"point":4},{"min":10,"max":12,"point":5}],
+      "B2_irritation":    [{"min":9,"max":12,"point":1},{"min":7,"max":8,"point":2},{"min":5,"max":6,"point":3},{"min":3,"max":4,"point":4},{"min":1,"max":2,"point":5}],
+      "B3_fatigue":       [{"min":9,"max":12,"point":1},{"min":7,"max":8,"point":2},{"min":5,"max":6,"point":3},{"min":3,"max":4,"point":4},{"min":1,"max":2,"point":5}],
+      "B4_anxiety":       [{"min":9,"max":12,"point":1},{"min":7,"max":8,"point":2},{"min":5,"max":6,"point":3},{"min":3,"max":4,"point":4},{"min":1,"max":2,"point":5}],
+      "B5_depression":    [{"min":19,"max":24,"point":1},{"min":15,"max":18,"point":2},{"min":11,"max":14,"point":3},{"min":7,"max":10,"point":4},{"min":3,"max":6,"point":5}],
+      "B6_physical":      [{"min":35,"max":44,"point":1},{"min":28,"max":34,"point":2},{"min":21,"max":27,"point":3},{"min":14,"max":20,"point":4},{"min":7,"max":13,"point":5}],
+      "C1_boss":          [{"min":3,"max":4,"point":1},{"min":5,"max":6,"point":2},{"min":7,"max":9,"point":3},{"min":10,"max":11,"point":4},{"min":12,"max":12,"point":5}],
+      "C2_coworker":      [{"min":3,"max":4,"point":1},{"min":5,"max":6,"point":2},{"min":7,"max":9,"point":3},{"min":10,"max":11,"point":4},{"min":12,"max":12,"point":5}],
+      "C3_family":        [{"min":3,"max":4,"point":1},{"min":5,"max":6,"point":2},{"min":7,"max":9,"point":3},{"min":10,"max":11,"point":4},{"min":12,"max":12,"point":5}]
+    }
+  }
+  </script>
+
+  <!-- ══════════════════════════════════════════════════
+       メインアプリ（JSX → Babel でブラウザ変換）
+       ══════════════════════════════════════════════════ -->
+  <script type="text/babel">
+    window.addEventListener('load', () => {
+    const { useState } = React;
+    const Recharts = window.Recharts || window._Recharts;
+    const {
+      RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
+      ResponsiveContainer, Tooltip,
+    } = Recharts;
+
+    // ── 変換テーブルの読み込み ─────────────────────────────
+    const conversionTable = JSON.parse(
+      document.getElementById('conversion-table').textContent
+    );
+
+    // ── calculateStressProfile ────────────────────────────
+    function calculateStressProfile(answers, gender) {
+      const q = answers;
+      const rawScores = {
+        A1_quantity:      15 - (q.q1  + q.q2  + q.q3),
+        A2_quality:       15 - (q.q4  + q.q5  + q.q6),
+        A3_physical:       5 -  q.q7,
+        A6_control:       15 - (q.q8  + q.q9  + q.q10),
+        A7_skill:               q.q11,
+        A4_interpersonal: 10 - (q.q12 + q.q13) + q.q14,
+        A5_environment:    5 -  q.q15,
+        A8_suitability:    5 -  q.q16,
+        A9_reward:         5 -  q.q17,
+        B1_vigor:          q.q18 + q.q19 + q.q20,
+        B2_irritation:     q.q21 + q.q22 + q.q23,
+        B3_fatigue:        q.q24 + q.q25 + q.q26,
+        B4_anxiety:        q.q27 + q.q28 + q.q29,
+        B5_depression:     q.q30 + q.q31 + q.q32 + q.q33 + q.q34 + q.q35,
+        B6_physical:       q.q36+q.q37+q.q38+q.q39+q.q40+q.q41+q.q42+q.q43+q.q44+q.q45+q.q46,
+        C1_boss:     15 - (q.q47 + q.q50 + q.q53),
+        C2_coworker: 15 - (q.q48 + q.q51 + q.q54),
+        C3_family:   15 - (q.q49 + q.q52 + q.q55),
+      };
+      const getEvalPoint = (key, raw) => {
+        const table = conversionTable[gender]?.[key];
+        if (!table) return 3;
+        const match = table.find(t => raw >= t.min && raw <= t.max);
+        return match ? match.point : 3;
+      };
+      const evalScores = {};
+      let sumA = 0, sumB = 0, sumC = 0;
+      for (const [key, raw] of Object.entries(rawScores)) {
+        const pt = getEvalPoint(key, raw);
+        evalScores[key] = pt;
+        if (key.startsWith('A')) sumA += pt;
+        if (key.startsWith('B')) sumB += pt;
+        if (key.startsWith('C')) sumC += pt;
+      }
+      const sumAC = sumA + sumC;
+      const isHighStress = sumB <= 12 || (sumB <= 17 && sumAC <= 26);
+      return {
+        isHighStress,
+        summaryScores: { sumA, sumB, sumC, sumAC },
+        radarChartData: {
+          stressFactors:  [evalScores.A1_quantity,evalScores.A2_quality,evalScores.A3_physical,evalScores.A4_interpersonal,evalScores.A5_environment,evalScores.A6_control,evalScores.A7_skill,evalScores.A8_suitability,evalScores.A9_reward],
+          stressReactions:[evalScores.B1_vigor,evalScores.B2_irritation,evalScores.B3_fatigue,evalScores.B4_anxiety,evalScores.B5_depression,evalScores.B6_physical],
+          supports:       [evalScores.C1_boss,evalScores.C2_coworker,evalScores.C3_family],
+        },
+      };
+    }
+
+    // ── ダミーデータ ──────────────────────────────────────
+    const DUMMY_NORMAL = {
+      q1:2,q2:2,q3:2,q4:2,q5:2,q6:2,q7:2,q8:3,q9:3,q10:3,q11:3,
+      q12:2,q13:2,q14:2,q15:2,q16:3,q17:3,
+      q18:3,q19:3,q20:3,q21:2,q22:2,q23:2,q24:2,q25:2,q26:2,
+      q27:2,q28:2,q29:2,q30:1,q31:1,q32:1,q33:1,q34:1,q35:1,
+      q36:1,q37:1,q38:1,q39:1,q40:1,q41:1,q42:1,q43:1,q44:1,q45:1,q46:1,
+      q47:2,q48:2,q49:1,q50:2,q51:2,q52:1,q53:2,q54:2,q55:1,q56:2,q57:2,
+    };
+    const DUMMY_HIGH = {
+      q1:4,q2:4,q3:4,q4:4,q5:4,q6:4,q7:4,q8:1,q9:1,q10:1,q11:1,
+      q12:4,q13:4,q14:1,q15:4,q16:1,q17:1,
+      q18:1,q19:1,q20:1,q21:4,q22:4,q23:4,q24:4,q25:4,q26:4,
+      q27:4,q28:4,q29:4,q30:4,q31:4,q32:4,q33:4,q34:4,q35:4,
+      q36:4,q37:4,q38:4,q39:4,q40:4,q41:4,q42:4,q43:4,q44:4,q45:4,q46:4,
+      q47:4,q48:4,q49:4,q50:4,q51:4,q52:4,q53:4,q54:4,q55:4,q56:2,q57:2,
+    };
+
+    // ── レーダーチャート 単体コンポーネント ──────────────
+    const G   = '#559018';
+    const GF  = 'rgba(85,144,24,0.25)';
+    const R   = '#dc2626';
+    const RF  = 'rgba(220,38,38,0.22)';
+
+    function StressRadar({ title, data, isHigh }) {
+      const color = isHigh ? R : G;
+      const fill  = isHigh ? RF : GF;
+      return (
+        <div style={S.chartCard}>
+          <div style={S.chartTitle}>{title}</div>
+          <ResponsiveContainer width="100%" height={240}>
+            <RadarChart data={data} margin={{top:8,right:16,bottom:8,left:16}}>
+              <PolarGrid stroke="#d1d5db" />
+              <PolarAngleAxis dataKey="label" tick={{fontSize:10,fill:'#374151'}} />
+              <PolarRadiusAxis domain={[1,5]} tickCount={5} tick={{fontSize:8,fill:'#9ca3af'}} axisLine={false} />
+              <Radar dataKey="value" stroke={color} fill={fill} strokeWidth={2} dot={{r:3,fill:color}} />
+              <Tooltip formatter={v=>[`${v} 点`,'評価点']} contentStyle={{fontSize:12,borderRadius:6}} />
+            </RadarChart>
+          </ResponsiveContainer>
+        </div>
+      );
+    }
+
+    // ── メインコンポーネント ──────────────────────────────
+    function StressProfileResult({ isHighStress, summaryScores, radarChartData }) {
+      const { sumA, sumB, sumC, sumAC } = summaryScores;
+      const factors = [
+        {label:'量的負担',  value:radarChartData.stressFactors[0]},
+        {label:'質的負担',  value:radarChartData.stressFactors[1]},
+        {label:'身体的負担',value:radarChartData.stressFactors[2]},
+        {label:'対人関係',  value:radarChartData.stressFactors[3]},
+        {label:'職場環境',  value:radarChartData.stressFactors[4]},
+        {label:'コントロール',value:radarChartData.stressFactors[5]},
+        {label:'技術活用',  value:radarChartData.stressFactors[6]},
+        {label:'適合性',    value:radarChartData.stressFactors[7]},
+        {label:'働きがい',  value:radarChartData.stressFactors[8]},
+      ];
+      const reactions = [
+        {label:'活気',    value:radarChartData.stressReactions[0]},
+        {label:'イライラ感',value:radarChartData.stressReactions[1]},
+        {label:'疲労感',  value:radarChartData.stressReactions[2]},
+        {label:'不安感',  value:radarChartData.stressReactions[3]},
+        {label:'抑うつ感',value:radarChartData.stressReactions[4]},
+        {label:'身体愁訴',value:radarChartData.stressReactions[5]},
+      ];
+      const supports = [
+        {label:'上司サポート',      value:radarChartData.supports[0]},
+        {label:'同僚サポート',      value:radarChartData.supports[1]},
+        {label:'家族・友人サポート',value:radarChartData.supports[2]},
+      ];
+
+      return (
+        <div style={S.wrapper}>
+          {/* タイトル */}
+          <div style={S.pageHeader}>
+            <h2 style={S.pageTitle}>ストレスプロフィール（速報）</h2>
+            <p style={S.pageSub}>※ この結果は目安です。詳細は産業医・保健師にご相談ください。</p>
+          </div>
+
+          {/* 判定バナー */}
+          {isHighStress ? (
+            <div style={{...S.banner,...S.bannerHigh}}>
+              <span style={S.bannerIcon}>⚠️</span>
+              <div>
+                <div style={{...S.bannerHeading,color:'#991b1b'}}>高ストレス者に該当します</div>
+                <div style={S.bannerBody}>
+                  現在の結果から、ストレスが高い状態にあると考えられます（高ストレス者に該当）。<br/>
+                  産業医との面接指導をご検討ください。申し出は任意であり、結果は本人の同意なく事業者に通知されません。
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div style={{...S.banner,...S.bannerOk}}>
+              <span style={S.bannerIcon}>✅</span>
+              <div>
+                <div style={{...S.bannerHeading,color:'#166534'}}>ストレス状態は概ね良好です</div>
+                <div style={S.bannerBody}>
+                  現在のストレス状態に特に大きな問題は見られません。引き続きセルフケアを心がけましょう。
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* レーダーチャート 3枚 */}
+          <div style={S.chartsRow}>
+            <StressRadar title="① 仕事のストレス要因" data={factors}   isHigh={isHighStress} />
+            <StressRadar title="② 心身のストレス反応"  data={reactions} isHigh={isHighStress} />
+            <StressRadar title="③ 周囲のサポート"      data={supports}  isHigh={isHighStress} />
+          </div>
+          <div style={S.scaleLegend}>
+            <span style={{...S.scaleBadge,background:'#fef2f2',color:'#dc2626'}}>← 中心 = 1点（高ストレス）</span>
+            <span style={{...S.scaleBadge,background:'#f0f5e8',color:'#559018'}}>外周 = 5点（良好）→</span>
+          </div>
+
+          {/* スコア表 */}
+          <div style={S.tableWrap}>
+            <h3 style={S.sectionTitle}>詳細スコア</h3>
+            <table style={S.table}>
+              <thead>
+                <tr>
+                  <th style={{...S.th,textAlign:'left'}}>領域</th>
+                  <th style={S.th}>得点</th>
+                  <th style={S.th}>範囲</th>
+                  <th style={{...S.th,textAlign:'left'}}>補足</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  {label:'領域A　仕事のストレス要因',val:sumA, range:'9〜45点', note:'高いほど良好'},
+                  {label:'領域B　心身のストレス反応', val:sumB, range:'6〜30点', note:'高いほど良好'},
+                  {label:'領域C　周囲のサポート',     val:sumC, range:'3〜15点', note:'高いほどサポート豊富'},
+                  {label:'領域A＋C　合計',            val:sumAC,range:'12〜60点',note:'高ストレス判定の補助指標'},
+                ].map((r,i)=>(
+                  <tr key={r.label} style={{background:i%2===0?'#f9fafb':'white'}}>
+                    <td style={S.td}>{r.label}</td>
+                    <td style={{...S.td,textAlign:'center',fontWeight:700,color:'#559018'}}>{r.val}</td>
+                    <td style={{...S.td,textAlign:'center',color:'#6b7280',fontSize:12}}>{r.range}</td>
+                    <td style={{...S.td,fontSize:12,color:'#6b7280'}}>{r.note}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <div style={S.criteriaBox}>
+              <strong>判定基準：</strong>①領域B ≤ 12点、または ②領域B ≤ 17点 かつ 領域A＋C ≤ 26点
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ── スタイル定義 ──────────────────────────────────────
+    const S = {
+      wrapper:    {fontFamily:"'Noto Sans JP',sans-serif",maxWidth:1100,margin:'0 auto',padding:'24px 16px 60px',background:'#f2f5ee',minHeight:'100vh'},
+      pageHeader: {marginBottom:20},
+      pageTitle:  {fontSize:22,fontWeight:700,color:'#3d6e0a',marginBottom:4},
+      pageSub:    {fontSize:12,color:'#6b7280'},
+      banner:     {display:'flex',alignItems:'flex-start',gap:16,padding:'16px 20px',borderRadius:10,marginBottom:24,borderWidth:1,borderStyle:'solid'},
+      bannerHigh: {background:'#fef2f2',borderColor:'#fca5a5'},
+      bannerOk:   {background:'#f0fdf4',borderColor:'#86efac'},
+      bannerIcon: {fontSize:26,flexShrink:0,marginTop:2},
+      bannerHeading:{fontSize:16,fontWeight:700,marginBottom:4},
+      bannerBody: {fontSize:13,color:'#374151',lineHeight:1.7},
+      chartsRow:  {display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:16,marginBottom:12},
+      chartCard:  {background:'white',borderRadius:10,padding:'16px 8px 8px',boxShadow:'0 2px 8px rgba(0,0,0,0.07)'},
+      chartTitle: {fontSize:13,fontWeight:700,color:'#3d6e0a',textAlign:'center',marginBottom:4},
+      scaleLegend:{display:'flex',justifyContent:'center',gap:16,marginBottom:24},
+      scaleBadge: {fontSize:11,padding:'4px 12px',borderRadius:20,fontWeight:600},
+      tableWrap:  {background:'white',borderRadius:10,padding:'20px 24px',boxShadow:'0 2px 8px rgba(0,0,0,0.07)'},
+      sectionTitle:{fontSize:15,fontWeight:700,color:'#3d6e0a',marginBottom:12,paddingBottom:6,borderBottom:'2px solid #8cc030'},
+      table:      {width:'100%',borderCollapse:'collapse',fontSize:13},
+      th:         {padding:'10px 12px',background:'#3d6e0a',color:'white',fontWeight:600,fontSize:12,textAlign:'center'},
+      td:         {padding:'10px 12px',borderBottom:'1px solid #e5e7eb'},
+      criteriaBox:{marginTop:12,padding:'8px 12px',background:'#f9fafb',borderRadius:6,fontSize:11,color:'#6b7280',borderLeft:'3px solid #d1d5db'},
+    };
+
+    // ── App（切り替えスイッチ付き） ───────────────────────
+    function App() {
+      const [isHigh, setIsHigh] = useState(false);
+      const answers = isHigh ? DUMMY_HIGH : DUMMY_NORMAL;
+      const result  = calculateStressProfile(answers, 'male');
+      return (
+        <div>
+          {/* 開発用切り替えボタン */}
+          <div style={{position:'fixed',top:12,right:16,zIndex:9999,display:'flex',alignItems:'center',gap:10,background:'white',border:'1px solid #d1d5db',borderRadius:8,padding:'6px 14px',boxShadow:'0 2px 8px rgba(0,0,0,0.12)',fontSize:13}}>
+            <span style={{color:'#6b7280'}}>表示テスト：</span>
+            <button onClick={()=>setIsHigh(false)} style={{padding:'4px 12px',borderRadius:6,border:'none',cursor:'pointer',background:!isHigh?'#559018':'#e5e7eb',color:!isHigh?'white':'#374151',fontWeight:600,fontSize:12}}>通常</button>
+            <button onClick={()=>setIsHigh(true)}  style={{padding:'4px 12px',borderRadius:6,border:'none',cursor:'pointer',background:isHigh?'#dc2626':'#e5e7eb',color:isHigh?'white':'#374151',fontWeight:600,fontSize:12}}>高ストレス</button>
+          </div>
+          <StressProfileResult {...result} />
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    }); // end window.addEventListener('load')
+  </script>
+</body>
+</html>

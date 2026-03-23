@@ -4,86 +4,159 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>管理者ダッシュボード | ストレスチェック</title>
-  <meta name="description" content="ストレスチェック管理者向けダッシュボード。回答データの一覧とCSVダウンロード機能を提供します。" />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/css/style.css?v=2" />
+  <style>
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; }
+    .modal-content { background: #fff; padding: 25px; border-radius: 12px; width: 95%; max-width: 650px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto; }
+    .modal-title { font-size: 18px; font-weight: bold; margin-bottom: 20px; color: #333; border-left: 5px solid var(--accent-blue); padding-left: 10px; }
+    
+    /* 🌟 新しいツリー構造のスタイル */
+    .tree-container { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 15px; max-height: 250px; overflow-y: auto; margin-bottom: 20px; }
+    .tree-item { display: flex; align-items: center; padding: 8px 10px; border-bottom: 1px dashed #eee; }
+    .tree-item:hover { background: #f8f9fa; }
+    
+    /* 階層ごとのインデント（段差）とアイコン */
+    .level-1 { font-weight: bold; color: #2c3e50; font-size: 15px; }
+    .level-2 { margin-left: 25px; color: #34495e; font-size: 14px; }
+    .level-2::before { content: "└"; color: #adb5bd; margin-right: 8px; font-weight: normal; }
+    .level-3 { margin-left: 50px; color: #495057; font-size: 13px; }
+    .level-3::before { content: "└"; color: #adb5bd; margin-right: 8px; font-weight: normal; }
+    
+    .tree-code { background: #e9ecef; color: #495057; font-size: 11px; font-family: monospace; padding: 3px 6px; border-radius: 4px; margin-left: 15px; }
+    .tree-delete { margin-left: auto; background: none; border: none; color: #dc3545; font-size: 12px; cursor: pointer; text-decoration: underline; }
+    .tree-delete:hover { color: #a71d2a; }
+
+    /* 入力フォームのスタイル */
+    .form-box { background: #f1f3f5; padding: 15px; border-radius: 8px; }
+    .form-grid { display: grid; grid-template-columns: 1.5fr 1fr 2fr auto; gap: 10px; align-items: flex-end; }
+    .form-label-s { font-size: 12px; font-weight: bold; color: #555; margin-bottom: 5px; display: block; }
+    .form-input-s { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+    
+    .btn-actions { display: flex; justify-content: space-between; margin-top: 20px; align-items: center; }
+    .btn-save { padding: 10px 20px; background: var(--accent-blue); border: none; border-radius: 4px; cursor: pointer; font-weight: 600; color: #fff; }
+    .btn-cancel { padding: 10px 20px; background: #e9ecef; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; color: #495057; }
+    .btn-settings { background-color: #6c757d; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 14px; display: inline-flex; align-items: center; gap: 5px; }
+    
+    .form-group { margin-bottom: 15px; }
+    .form-group label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 5px; color: var(--text-secondary); }
+    .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; box-sizing: border-box; }
+    .date-range { display: flex; align-items: center; gap: 10px; }
+    .date-range input { flex: 1; }
+  </style>
 </head>
 <body>
 
-  <!-- Admin Header -->
   <header class="admin-header">
     <div class="admin-title-wrap">
-      <span class="badge">Admin Dashboard</span>
-      <h1>ストレスチェック　管理者画面</h1>
-      <div style="font-size:11px; margin-top:3px;">
-        <span style="color:var(--text-secondary);">株式会社〇〇</span>　／　<span style="color:var(--accent-blue); font-weight:600;">委託：つばさ社会保険労務士事務所</span>
-      </div>
+      <h1>ストレスチェック 管理画面</h1>
+      <div style="font-size:11px; margin-top:3px; color:var(--accent-blue); font-weight:600;">委託：つばさ社会保険労務士事務所</div>
     </div>
     <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-      <button class="btn-csv" id="refresh-btn" onclick="loadData()">
-        🔄 更新
-      </button>
-      <a href="/api/csv" class="btn-csv" id="csv-btn" download>
-        ⬇ CSV ダウンロード
-      </a>
+      <button class="btn-settings" style="background:#17a2b8;" onclick="openWorkplaceModal()">🏢 組織図の管理</button>
+      <button class="btn-settings" onclick="openSettingsModal()">⚙️ 実施者管理</button>
+      <button class="btn-csv" onclick="loadData()">🔄 更新</button>
+      <a href="/api/csv" class="btn-csv" download>⬇ 結果CSV</a>
     </div>
   </header>
 
-  <!-- Main Content -->
-  <div class="admin-container">
+  <div class="modal-overlay" id="workplace-modal">
+    <div class="modal-content">
+      <div class="modal-title">🏢 組織図の管理</div>
+      
+      <div class="tree-container" id="workplace-list-body">
+        </div>
 
-    <!-- Stats -->
-    <div class="stats-row">
-      <div class="stat-card">
-        <div class="stat-label">総回答数</div>
-        <div class="stat-value" id="total-count">—</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">最終回答日時</div>
-        <div class="stat-value" id="latest-date" style="font-size:16px; padding-top:8px;">—</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">従業員ページ</div>
-        <div style="margin-top:10px;">
-          <a href="/" target="_blank" style="font-size:13px; color:var(--accent-blue); text-decoration:none; font-weight:600;">
-            回答ページへ →
-          </a>
+      <div class="form-box">
+        <p style="font-size: 12px; font-weight: bold; margin-bottom: 10px; color: #333;">新しく組織を追加する</p>
+        <div class="form-grid">
+          <div>
+            <label class="form-label-s">部署の規模</label>
+            <select id="wp_level" class="form-input-s">
+              <option value="1">🏢 大分類（部・支社）</option>
+              <option value="2">📁 中分類（課・営業所）</option>
+              <option value="3">📄 小分類（係・チーム）</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label-s">コード</label>
+            <input type="text" id="wp_code" class="form-input-s" placeholder="例: 101">
+          </div>
+          <div>
+            <label class="form-label-s">部署名</label>
+            <input type="text" id="wp_name" class="form-input-s" placeholder="例: 人事総務部">
+          </div>
+          <button onclick="addWorkplace()" style="padding: 8px 15px; background: var(--accent-blue); color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer;">追加</button>
         </div>
       </div>
+
+      <div class="btn-actions">
+        <a href="/api/csv/workplaces" style="color: #28a745; font-weight: bold; text-decoration: none; font-size: 14px;" download>⬇ 取込用Excel（職場）を出力</a>
+        <button class="btn-cancel" onclick="closeWorkplaceModal()">閉じる</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="settings-modal">
+    <div class="modal-content">
+      <div class="modal-title">実施者管理 設定</div>
+      <form id="settings-form">
+        <div class="form-group">
+          <label>会社名（※従業員画面に連動します）</label>
+          <input type="text" id="company_name" placeholder="例：株式会社〇〇" />
+        </div>
+        <div class="form-group">
+          <label>実施期間</label>
+          <div class="date-range">
+            <input type="date" id="period_start" />
+            <span>〜</span>
+            <input type="date" id="period_end" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>実施者氏名</label>
+          <input type="text" id="practitioner_name" placeholder="例：山田 太郎" />
+        </div>
+        <div class="form-group">
+          <label>検査実施者（資格）</label>
+          <select id="practitioner_role">
+            <option value="">選択してください</option>
+            <option value="公認心理士">公認心理士</option>
+            <option value="精神保健福祉士">精神保健福祉士</option>
+            <option value="医師">医師</option>
+            <option value="看護師">看護師</option>
+            <option value="保健師">保健師</option>
+          </select>
+        </div>
+        <div class="btn-actions" style="justify-content: flex-end; gap: 10px;">
+          <button type="button" class="btn-cancel" onclick="closeSettingsModal()">キャンセル</button>
+          <button type="button" class="btn-save" onclick="saveSettings()">保存する</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="admin-container">
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-label">総回答数</div><div class="stat-value" id="total-count">—</div></div>
+      <div class="stat-card"><div class="stat-label">最終回答日時</div><div class="stat-value" id="latest-date" style="font-size:16px; padding-top:8px;">—</div></div>
+      <div class="stat-card"><div class="stat-label">従業員ページ</div><div style="margin-top:10px;"><a href="/" target="_blank" style="font-size:13px; color:var(--accent-blue); text-decoration:none; font-weight:600;">回答ページへ →</a></div></div>
     </div>
 
-    <!-- Table -->
     <div class="table-wrap">
-      <div class="table-header-row">
-        <span class="table-title">回答一覧</span>
-        <span style="font-size:11px; color:var(--text-muted);" id="updated-at">読み込み中...</span>
-      </div>
+      <div class="table-header-row"><span class="table-title">回答一覧</span><span style="font-size:11px; color:var(--text-muted);" id="updated-at">読み込み中...</span></div>
       <div class="table-scroll">
         <table id="response-table">
           <thead>
-            <tr>
-              <th>No.</th>
-              <th>氏名</th>
-              <th>フリガナ</th>
-              <th>生年月日</th>
-              <th>性別</th>
-              <th>社員ID</th>
-              <th>職場コード</th>
-              <th>職場名</th>
-              <th>回答日時</th>
-            </tr>
+            <tr><th>No.</th><th>氏名</th><th>フリガナ</th><th>生年月日</th><th>性別</th><th>社員ID</th><th>職場コード</th><th>職場名</th><th>回答日時</th></tr>
           </thead>
-          <tbody id="table-body">
-            <!-- JSで挿入 -->
-          </tbody>
+          <tbody id="table-body"></tbody>
         </table>
       </div>
     </div>
-
   </div>
 
-  <!-- Toast -->
   <div class="toast" id="toast"></div>
 
   <script>
@@ -95,75 +168,113 @@
       setTimeout(() => t.classList.remove('show'), 3500);
     }
 
-    async function loadData() {
-      document.getElementById('updated-at').textContent = '読み込み中...';
+    // --- 職場管理（ツリー表示） ---
+    const wModal = document.getElementById('workplace-modal');
+    async function openWorkplaceModal() { await loadWorkplaces(); wModal.style.display = 'flex'; }
+    function closeWorkplaceModal() { wModal.style.display = 'none'; }
+    
+    async function loadWorkplaces() {
       try {
-        const res = await fetch('/api/responses');
-        if (!res.ok) throw new Error('Failed to fetch');
+        const res = await fetch('/api/workplaces');
         const data = await res.json();
-
-        const tbody = document.getElementById('table-body');
-        const totalEl = document.getElementById('total-count');
-        const latestEl = document.getElementById('latest-date');
-        const updatedAtEl = document.getElementById('updated-at');
-
-        totalEl.textContent = data.length;
-
-        if (data.length === 0) {
-          tbody.innerHTML = `
-            <tr>
-              <td colspan="9">
-                <div class="empty-state">
-                  <div class="empty-state-icon">📭</div>
-                  まだ回答データがありません
-                </div>
-              </td>
-            </tr>
-          `;
-          latestEl.textContent = '—';
-          latestEl.style.fontSize = '';
-        } else {
-          latestEl.textContent = data[0].submitted_at || '—';
-          latestEl.style.fontSize = '13px';
-          latestEl.style.paddingTop = '10px';
-
-          tbody.innerHTML = data.map((row, idx) => {
-            const genderClass = row.gender === '男性' ? 'male' : 'female';
-            return `
-              <tr>
-                <td style="color:var(--text-muted); font-size:12px;">${data.length - idx}</td>
-                <td><strong>${escapeHtml(row.name)}</strong></td>
-                <td style="color:var(--text-secondary);">${escapeHtml(row.furigana)}</td>
-                <td>${escapeHtml(row.birth_date)}</td>
-                <td><span class="badge-gender ${genderClass}">${escapeHtml(row.gender)}</span></td>
-                <td style="font-family:monospace; font-size:12px; color:var(--accent-blue);">${escapeHtml(row.employee_id)}</td>
-                <td style="font-family:monospace; font-size:12px;">${escapeHtml(row.workplace_code)}</td>
-                <td>${escapeHtml(row.workplace_name)}</td>
-                <td style="color:var(--text-muted); font-size:12px;">${escapeHtml(row.submitted_at)}</td>
-              </tr>
-            `;
-          }).join('');
+        const tbody = document.getElementById('workplace-list-body');
+        
+        if(data.length === 0) {
+          tbody.innerHTML = '<div style="text-align:center; padding: 30px; color:#888;">まだ組織図が登録されていません</div>';
+          return;
         }
 
-        const now = new Date();
-        updatedAtEl.textContent = `最終更新: ${now.toLocaleTimeString('ja-JP')}`;
-      } catch (err) {
-        showToast('❌ データの読み込みに失敗しました（サーバーが起動していないかもしれません）', true);
-        document.getElementById('updated-at').textContent = '読み込みエラー';
-      }
+        // コード順に並べることで、自動的にツリー（親→子）の順番になる
+        data.sort((a, b) => a.code.localeCompare(b.code));
+
+        tbody.innerHTML = data.map(wp => {
+          let icon = wp.level == 1 ? "🏢" : (wp.level == 2 ? "📁" : "📄");
+          return `
+            <div class="tree-item level-${wp.level}">
+              <span>${icon} ${escapeHtml(wp.name)}</span>
+              <span class="tree-code">コード: ${escapeHtml(wp.code)}</span>
+              <button class="tree-delete" onclick="deleteWorkplace('${wp.id}')">削除</button>
+            </div>
+          `;
+        }).join('');
+      } catch (e) { console.error(e); }
     }
 
-    function escapeHtml(str) {
-      if (str == null) return '';
-      return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
+    async function addWorkplace() {
+      const code = document.getElementById('wp_code').value.trim();
+      const name = document.getElementById('wp_name').value.trim();
+      const level = document.getElementById('wp_level').value;
+      if(!code || !name) { alert('コードと部署名を入力してください'); return; }
+      try {
+        const res = await fetch('/api/workplaces', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({code, name, level}) });
+        if(res.ok) { document.getElementById('wp_code').value = ''; document.getElementById('wp_name').value = ''; loadWorkplaces(); }
+      } catch(e) { showToast('❌ 追加に失敗しました', true); }
     }
 
-    loadData();
-    setInterval(loadData, 30000);
+    async function deleteWorkplace(id) {
+      if(!confirm('本当に削除しますか？')) return;
+      try { await fetch('/api/workplaces/' + id, { method: 'DELETE' }); loadWorkplaces(); } catch(e) { }
+    }
+
+    // --- 実施者管理 ---
+    const sModal = document.getElementById('settings-modal');
+    async function openSettingsModal() {
+      try {
+        const res = await fetch('/api/settings');
+        if (res.ok) {
+          const data = await res.json();
+          document.getElementById('company_name').value = data.company_name || '';
+          const period = data.implementation_period || '';
+          if (period.includes(' 〜 ')) {
+            const parts = period.split(' 〜 ');
+            document.getElementById('period_start').value = parts[0];
+            document.getElementById('period_end').value = parts[1];
+          }
+          document.getElementById('practitioner_name').value = data.practitioner_name || '';
+          document.getElementById('practitioner_role').value = data.practitioner_role || '';
+        }
+      } catch (e) { }
+      sModal.style.display = 'flex';
+    }
+    function closeSettingsModal() { sModal.style.display = 'none'; }
+    async function saveSettings() {
+      const pStart = document.getElementById('period_start').value;
+      const pEnd = document.getElementById('period_end').value;
+      const periodStr = (pStart || pEnd) ? `${pStart} 〜 ${pEnd}` : "";
+      const payload = { company_name: document.getElementById('company_name').value, implementation_period: periodStr, practitioner_name: document.getElementById('practitioner_name').value, practitioner_role: document.getElementById('practitioner_role').value };
+      try {
+        const res = await fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        if (res.ok) { showToast('✅ 設定を保存しました'); closeSettingsModal(); }
+      } catch (e) { }
+    }
+
+    window.onclick = function(event) {
+      if (event.target == sModal) closeSettingsModal();
+      if (event.target == wModal) closeWorkplaceModal();
+    }
+
+    async function loadData() {
+      try {
+        const res = await fetch('/api/responses');
+        const data = await res.json();
+        const tbody = document.getElementById('table-body');
+        document.getElementById('total-count').textContent = data.length;
+        if (data.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="9"><div class="empty-state">📭 まだ回答データがありません</div></td></tr>`;
+          document.getElementById('latest-date').textContent = '—';
+        } else {
+          document.getElementById('latest-date').textContent = data[0].submitted_at || '—';
+          tbody.innerHTML = data.map((row, idx) => {
+            const genderClass = row.gender === '男性' ? 'male' : 'female';
+            return `<tr><td style="color:#888; font-size:12px;">${data.length - idx}</td><td><strong>${escapeHtml(row.name)}</strong></td><td style="color:#666;">${escapeHtml(row.furigana)}</td><td>${escapeHtml(row.birth_date)}</td><td><span class="badge-gender ${genderClass}">${escapeHtml(row.gender)}</span></td><td style="font-family:monospace; font-size:12px; color:var(--accent-blue);">${escapeHtml(row.employee_id)}</td><td style="font-family:monospace; font-size:12px;">${escapeHtml(row.workplace_code)}</td><td>${escapeHtml(row.workplace_name)}</td><td style="color:#888; font-size:12px;">${escapeHtml(row.submitted_at)}</td></tr>`;
+          }).join('');
+        }
+        document.getElementById('updated-at').textContent = `最終更新: ${new Date().toLocaleTimeString('ja-JP')}`;
+      } catch (err) { }
+    }
+
+    function escapeHtml(str) { if (str == null) return ''; return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+    loadData(); setInterval(loadData, 30000);
   </script>
 </body>
 </html>
