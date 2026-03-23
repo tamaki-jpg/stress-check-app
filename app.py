@@ -13,6 +13,60 @@ app = Flask(__name__)
 app.secret_key = 'stress_check_super_secret_key'
 
 # ==========================================
+# 素点換算表（MHLW公式・性別対応）
+# ==========================================
+_CT = {
+    "male": {
+        "A1_quantity":      [(3,5,1),(6,7,2),(8,9,3),(10,11,4),(12,12,5)],
+        "A2_quality":       [(3,5,1),(6,7,2),(8,9,3),(10,11,4),(12,12,5)],
+        "A3_physical":      [(1,1,2),(2,2,3),(3,3,4),(4,4,5)],
+        "A4_interpersonal": [(3,3,1),(4,5,2),(6,7,3),(8,9,4),(10,12,5)],
+        "A5_environment":   [(1,1,2),(2,2,3),(3,3,4),(4,4,5)],
+        "A6_control":       [(3,4,1),(5,6,2),(7,8,3),(9,10,4),(11,12,5)],
+        "A7_skill":         [(1,1,1),(2,2,2),(3,3,3),(4,4,4)],
+        "A8_suitability":   [(1,1,1),(2,2,2),(3,3,3),(4,4,5)],
+        "A9_reward":        [(1,1,1),(2,2,2),(3,3,3),(4,4,5)],
+        "B1_vigor":         [(3,3,1),(4,5,2),(6,7,3),(8,9,4),(10,12,5)],
+        "B2_irritation":    [(3,3,1),(4,5,2),(6,7,3),(8,9,4),(10,12,5)],
+        "B3_fatigue":       [(3,3,1),(4,4,2),(5,7,3),(8,10,4),(11,12,5)],
+        "B4_anxiety":       [(3,3,1),(4,4,2),(5,7,3),(8,9,4),(10,12,5)],
+        "B5_depression":    [(6,6,1),(7,8,2),(9,12,3),(13,16,4),(17,24,5)],
+        "B6_physical":      [(11,11,1),(12,15,2),(16,21,3),(22,26,4),(27,44,5)],
+        "C1_boss":          [(3,4,1),(5,6,2),(7,8,3),(9,10,4),(11,12,5)],
+        "C2_coworker":      [(3,5,1),(6,7,2),(8,9,3),(10,11,4),(12,12,5)],
+        "C3_family":        [(3,6,1),(7,8,2),(9,9,3),(10,11,4),(12,12,5)],
+        "D1_satisfaction":  [(2,3,1),(4,4,2),(5,6,3),(7,7,4),(8,8,5)],
+    },
+    "female": {
+        "A1_quantity":      [(3,4,1),(5,6,2),(7,9,3),(10,11,4),(12,12,5)],
+        "A2_quality":       [(3,4,1),(5,6,2),(7,8,3),(9,10,4),(11,12,5)],
+        "A3_physical":      [(1,1,2),(2,2,3),(3,3,4),(4,4,5)],
+        "A4_interpersonal": [(3,3,1),(4,5,2),(6,7,3),(8,9,4),(10,12,5)],
+        "A5_environment":   [(1,1,1),(2,2,3),(3,3,4),(4,4,5)],
+        "A6_control":       [(3,3,1),(4,5,2),(6,8,3),(9,10,4),(11,12,5)],
+        "A7_skill":         [(1,1,1),(2,2,2),(3,3,3),(4,4,4)],
+        "A8_suitability":   [(1,1,1),(2,2,2),(3,3,3),(4,4,5)],
+        "A9_reward":        [(1,1,1),(2,2,2),(3,3,3),(4,4,5)],
+        "B1_vigor":         [(3,3,1),(4,5,2),(6,7,3),(8,9,4),(10,12,5)],
+        "B2_irritation":    [(3,3,1),(4,5,2),(6,8,3),(9,10,4),(11,12,5)],
+        "B3_fatigue":       [(3,3,1),(4,5,2),(6,8,3),(9,11,4),(12,12,5)],
+        "B4_anxiety":       [(3,3,1),(4,4,2),(5,7,3),(8,10,4),(11,12,5)],
+        "B5_depression":    [(6,6,1),(7,8,2),(9,12,3),(13,17,4),(18,24,5)],
+        "B6_physical":      [(11,13,1),(14,17,2),(18,23,3),(24,29,4),(30,44,5)],
+        "C1_boss":          [(3,3,1),(4,5,2),(6,7,3),(8,10,4),(11,12,5)],
+        "C2_coworker":      [(3,5,1),(6,7,2),(8,9,3),(10,11,4),(12,12,5)],
+        "C3_family":        [(3,6,1),(7,8,2),(9,9,3),(10,11,4),(12,12,5)],
+        "D1_satisfaction":  [(2,3,1),(4,4,2),(5,6,3),(7,7,4),(8,8,5)],
+    }
+}
+
+def _get_ep(gender_key, subscale, raw):
+    for mn, mx, pt in _CT[gender_key].get(subscale, []):
+        if mn <= raw <= mx:
+            return pt
+    return 3
+
+# ==========================================
 # データベース(SQLite)の初期設定
 # ==========================================
 DB_NAME = 'database.db'
@@ -69,17 +123,49 @@ def get_setting(key, default=''):
 # ストレスチェック 判定 ＆ 詳細スコア計算ロジック
 # ==========================================
 def analyze_stress(answers):
-    # 1. 素点計算（高いほどストレス大）
-    a_score = sum([int(answers.get(f'q{i}', 3)) if i in [8,9,10,16,17] else (5 - int(answers.get(f'q{i}', 3))) for i in range(1, 18)])
-    b_score = sum([(5 - int(answers.get(f'q{i}', 3))) if i in [18,19,20] else int(answers.get(f'q{i}', 3)) for i in range(18, 47)])
-    c_score = sum([int(answers.get(f'q{i}', 3)) for i in range(47, 56)])
+    gender = answers.get('gender', '男性')
+    g = 'female' if gender == '女性' else 'male'
+    q = {f'q{i}': int(answers.get(f'q{i}', 3)) for i in range(1, 58)}
 
-    # 高ストレス判定（厚労省基準準拠）
-    is_high_stress = False
-    if b_score >= 77:
-        is_high_stress = True
-    elif b_score >= 63 and (a_score + c_score) >= 76:
-        is_high_stress = True
+    # 1. 素点計算（MHLW 57問マッピング）
+    raw = {
+        'A1_quantity':      15 - (q['q1'] + q['q2'] + q['q3']),
+        'A2_quality':       15 - (q['q4'] + q['q5'] + q['q6']),
+        'A3_physical':       5 -  q['q7'],
+        'A4_interpersonal': 10 - (q['q12'] + q['q13']) + q['q14'],
+        'A5_environment':    5 -  q['q15'],
+        'A6_control':       15 - (q['q8']  + q['q9']  + q['q10']),
+        'A7_skill':               q['q11'],
+        'A8_suitability':    5 -  q['q16'],
+        'A9_reward':         5 -  q['q17'],
+        'B1_vigor':          q['q18'] + q['q19'] + q['q20'],
+        'B2_irritation':     q['q21'] + q['q22'] + q['q23'],
+        'B3_fatigue':        q['q24'] + q['q25'] + q['q26'],
+        'B4_anxiety':        q['q27'] + q['q28'] + q['q29'],
+        'B5_depression':     q['q30'] + q['q31'] + q['q32'] + q['q33'] + q['q34'] + q['q35'],
+        'B6_physical':       q['q36'] + q['q37'] + q['q38'] + q['q39'] + q['q40'] + q['q41'] +
+                             q['q42'] + q['q43'] + q['q44'] + q['q45'] + q['q46'],
+        'C1_boss':     15 - (q['q47'] + q['q50'] + q['q53']),
+        'C2_coworker': 15 - (q['q48'] + q['q51'] + q['q54']),
+        'C3_family':   15 - (q['q49'] + q['q52'] + q['q55']),
+        'D1_satisfaction': 10 - (q['q56'] + q['q57']),
+    }
+
+    # 2. 評価点（ep）に変換
+    ep = {key: _get_ep(g, key, val) for key, val in raw.items()}
+
+    # 3. 各領域 ep 合計（方式その2: 単純ep合計）
+    sumA = sum(ep[k] for k in ['A1_quantity','A2_quality','A3_physical',
+                                'A4_interpersonal','A5_environment',
+                                'A6_control','A7_skill','A8_suitability','A9_reward'])
+    sumB = sum(ep[k] for k in ['B1_vigor','B2_irritation','B3_fatigue',
+                                'B4_anxiety','B5_depression','B6_physical'])
+    sumC = sum(ep[k] for k in ['C1_boss','C2_coworker','C3_family'])  # D1は除外
+
+    # 4. 高ストレス判定（厚労省方式 素点換算表を用いた評価基準 その2）
+    # 条件①: 領域B合計 ≤ 12
+    # 条件②: 領域B合計 ≤ 17 かつ (領域A + 領域C)合計 ≤ 26
+    is_high_stress = (sumB <= 12) or (sumB <= 17 and (sumA + sumC) <= 26)
 
     # 2. 5段階スケール変換（1:悪い ～ 5:良い）
     def to_5_scale(q_list, reverse_goodness=False):
