@@ -382,6 +382,27 @@
               <div style={S.cItem}><strong style={{color:'#3d6e0a'}}>【いつ】</strong><br/>結果通知後、1ヶ月以内を目安に</div>
               <div style={S.cItem}><strong style={{color:'#3d6e0a'}}>【どうやって】</strong><br/>人事部 健康管理担当へご連絡</div>
             </div>
+
+            {/* 外部相談窓口・お役立ち情報 */}
+            <div style={S.extBox}>
+              <h4 style={S.extTitle}>🌐 外部のお役立ち情報・相談窓口</h4>
+              <p style={S.extText}>
+                メンタルヘルス対策の基礎知識、事業場の取組事例、「５分でできる職場のストレスセルフチェック」などのツール、「ポジティブ・シェアリング～疲れやストレスと前向きにつきあうコツ～」等の情報提供等を行っています。<br/>
+                また、メンタルヘルス不調等に関するメール相談・電話相談窓口を設定しています。
+              </p>
+              <div style={S.extBanners}>
+                <a href="https://kokoro.mhlw.go.jp/" target="_blank" rel="noopener noreferrer" style={S.extBannerLink}>
+                  <img src="https://www.mhlw.go.jp/content/banner_mental_health.gif"
+                       alt="働く人のメンタルヘルス・ポータルサイト「こころの耳」"
+                       style={S.extBannerImg} />
+                </a>
+                <a href="https://kokoro.mhlw.go.jp/ps/" target="_blank" rel="noopener noreferrer" style={S.extBannerLink}>
+                  <img src="https://www.mhlw.go.jp/content/banner_posishare.gif"
+                       alt="POSITIVE SHARING 疲れやストレスと前向きにつきあうコツ"
+                       style={S.extBannerImg} />
+                </a>
+              </div>
+            </div>
           </div>
         </div>
       );
@@ -425,6 +446,12 @@
       note:      {marginTop:10,padding:'7px 10px',background:'#f9fafb',borderRadius:6,fontSize:10,color:'#9ca3af',borderLeft:'3px solid #d1d5db'},
       cGrid:     {display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10},
       cItem:     {background:'#f9fafb',borderRadius:8,padding:'12px 14px',fontSize:12,color:'#374151',lineHeight:1.7},
+      extBox:    {marginTop:20,paddingTop:16,borderTop:'1px solid #e5e7eb'},
+      extTitle:  {fontSize:13,fontWeight:700,color:'#3d6e0a',marginBottom:8},
+      extText:   {fontSize:12,color:'#6b7280',lineHeight:1.8,marginBottom:14},
+      extBanners:{display:'flex',flexWrap:'wrap',gap:16},
+      extBannerLink:{display:'block',flexShrink:0},
+      extBannerImg: {display:'block',maxWidth:'100%',height:'auto',borderRadius:4},
     };
 
     // ── レンダリング ─────────────────────────────────────
