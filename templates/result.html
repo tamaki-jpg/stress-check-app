@@ -259,7 +259,6 @@
               </td>
             );
           })}
-          <td style={{...S.epCell, fontWeight:700, color:'#374151', borderLeft:'2px solid #e5e7eb'}}>{ep}</td>
         </tr>
       );
     }
@@ -338,7 +337,10 @@
             <SVGRadar title="ストレスによっておこる心身の反応"  data={prof.reactions} isHigh={isHigh}/>
             <SVGRadar title="ストレス反応に影響を与える他の因子" data={prof.supports}  isHigh={isHigh}/>
           </div>
-          <p style={S.chartGuide}>グラフが外側に広がるほど良好な状態です。逆に、中心の赤いエリアに近づくほど、ストレスが蓄積しているサインとなります。</p>
+          <div style={S.chartGuideBox}>
+            <div style={S.chartGuideTitle}>💡 【グラフの見方】</div>
+            <p style={S.chartGuideText}>グラフが外側に広がるほど良好な状態です。逆に、中心の赤いエリアに近づくほど、ストレスが蓄積しているサインとなります。</p>
+          </div>
 
           {/* 評価点テーブル */}
           <div style={S.card}>
@@ -356,16 +358,16 @@
                   <th style={S.th}>普通</th>
                   <th style={S.th}>やや<br/>高い</th>
                   <th style={S.th}>高い<br/>多い</th>
-                  <th style={{...S.th,borderLeft:'2px solid rgba(255,255,255,0.3)'}}>評価点</th>
                 </tr>
               </thead>
               <tbody>
-                <tr><td colSpan={7} style={S.secRow}>【ストレスの原因と考えられる因子】<span style={S.total}>合計 {sumA} 点</span></td></tr>
+                <tr><td colSpan={6} style={S.secRow}>【ストレスの原因と考えられる因子】<span style={S.total}>小計 {sumA} 点</span></td></tr>
                 {aRows.map(r => <EpRow key={r.key} label={r.label} ep={ep[r.key]} star={r.star}/>)}
-                <tr><td colSpan={7} style={S.secRow}>【ストレスによっておこる心身の反応】<span style={S.total}>合計 {sumB} 点</span></td></tr>
+                <tr><td colSpan={6} style={S.secRow}>【ストレスによっておこる心身の反応】<span style={S.total}>小計 {sumB} 点</span></td></tr>
                 {bRows.map(r => <EpRow key={r.key} label={r.label} ep={ep[r.key]} star={r.star}/>)}
-                <tr><td colSpan={7} style={S.secRow}>【ストレス反応に影響を与える他の因子】<span style={S.total}>合計 {sumC} 点</span></td></tr>
+                <tr><td colSpan={6} style={S.secRow}>【ストレス反応に影響を与える他の因子】<span style={S.total}>小計 {sumC} 点</span></td></tr>
                 {cRows.map(r => <EpRow key={r.key} label={r.label} ep={ep[r.key]} star={r.star}/>)}
+                <tr><td colSpan={6} style={S.totalRow}>合計（総合計）<span style={{...S.total, fontSize:15, color:'white'}}>{sumA + sumB + sumC} 点</span></td></tr>
               </tbody>
             </table>
             <div style={S.note}>
@@ -404,11 +406,13 @@
       icon:      {fontSize:24,flexShrink:0,marginTop:1},
       bHead:     {fontSize:15,fontWeight:700,marginBottom:3},
       bBody:     {fontSize:12,color:'#374151',lineHeight:1.7},
-      charts:    {display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:14,marginBottom:18},
-      chartCard: {background:'white',borderRadius:10,padding:'14px 6px 8px',boxShadow:'0 2px 8px rgba(0,0,0,0.07)'},
-      chartTitle:{fontSize:12,fontWeight:700,textAlign:'center',marginBottom:2},
-      chartNote: {fontSize:9,textAlign:'center',color:'#9ca3af',marginTop:2},
-      chartGuide:{fontSize:11,textAlign:'center',color:'#6b7280',marginTop:4,marginBottom:14,lineHeight:1.7},
+      charts:        {display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:14,marginBottom:12},
+      chartCard:     {background:'white',borderRadius:10,padding:'14px 6px 8px',boxShadow:'0 2px 8px rgba(0,0,0,0.07)'},
+      chartTitle:    {fontSize:12,fontWeight:700,textAlign:'center',marginBottom:2},
+      chartNote:     {fontSize:9,textAlign:'center',color:'#9ca3af',marginTop:2},
+      chartGuideBox: {background:'#e8f4f8',borderRadius:8,padding:'14px 20px',marginBottom:18,textAlign:'center',border:'1px solid #b3d9ea'},
+      chartGuideTitle:{fontSize:13,fontWeight:700,color:'#1a5276',marginBottom:5},
+      chartGuideText: {fontSize:12,color:'#374151',lineHeight:1.7,margin:0},
       card:      {background:'white',borderRadius:10,padding:'18px 22px',boxShadow:'0 2px 8px rgba(0,0,0,0.07)',marginBottom:16},
       sec:       {fontSize:14,fontWeight:700,color:'#3d6e0a',marginBottom:8,paddingBottom:5,borderBottom:'2px solid #8cc030'},
       hint:      {fontSize:11,color:'#6b7280',marginBottom:10},
@@ -418,6 +422,7 @@
       epCell:    {padding:'7px 4px',borderBottom:'1px solid #f3f4f6',textAlign:'center',width:'9%'},
       secRow:    {padding:'8px 10px',background:'#f0f4e8',fontWeight:700,fontSize:12,color:'#3d6e0a'},
       total:     {float:'right',fontWeight:700,fontSize:13,color:'#1a4d00'},
+      totalRow:  {padding:'10px 12px',background:'#1a4d00',color:'white',fontWeight:700,fontSize:13},
       note:      {marginTop:10,padding:'7px 10px',background:'#f9fafb',borderRadius:6,fontSize:10,color:'#9ca3af',borderLeft:'3px solid #d1d5db'},
       cGrid:     {display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10},
       cItem:     {background:'#f9fafb',borderRadius:8,padding:'12px 14px',fontSize:12,color:'#374151',lineHeight:1.7},
