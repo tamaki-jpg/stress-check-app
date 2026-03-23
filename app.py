@@ -97,6 +97,7 @@ def init_db():
             employee_id TEXT NOT NULL,
             name TEXT NOT NULL,
             workplace_name TEXT,
+            email TEXT,
             is_high_stress BOOLEAN,
             answers_json TEXT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -107,6 +108,19 @@ def init_db():
 
 # アプリ起動時にDBを作成
 init_db()
+
+def migrate_db():
+    """既存DBに不足カラムを追加するマイグレーション処理"""
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    # responses テーブルに email カラムが存在しない場合は追加
+    existing_cols = [row[1] for row in c.execute('PRAGMA table_info(responses)').fetchall()]
+    if 'email' not in existing_cols:
+        c.execute('ALTER TABLE responses ADD COLUMN email TEXT')
+    conn.commit()
+    conn.close()
+
+migrate_db()
 
 def get_db_connection():
     conn = sqlite3.connect(DB_NAME)
@@ -264,12 +278,13 @@ def submit_data():
     # 2. データベース(SQLite)に保存（employee_idは自動採番）
     conn = get_db_connection()
     cursor = conn.execute('''
-        INSERT INTO responses (employee_id, name, workplace_name, is_high_stress, answers_json)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO responses (employee_id, name, workplace_name, email, is_high_stress, answers_json)
+        VALUES (?, ?, ?, ?, ?, ?)
     ''', (
         '',  # 仮で空にしてINSERT後に採番
         data.get('name', ''),
         data.get('workplace_name', ''),
+        data.get('email', '') or None,  # 空文字はNULLとして保存
         analysis['is_high_stress'],
         json.dumps(data, ensure_ascii=False)
     ))
@@ -483,7 +498,9 @@ def export_results_csv():
             r['employee_id'],               # 社員ID
             ans.get('workplace_code', ''),  # 職場コード
             r['workplace_name'],            # 職場名
-            '', '', '', '', '', '', ''      # 前回社員ID 〜 変数値までは空欄
+            '',                             # 前回社員ID
+            r['email'] or '',               # メールアドレス
+            '', '', '', '', ''              # 電話番号 〜 変数値までは空欄
         ]
         
         # A-1 〜 A-17 (q1 〜 q17)

@@ -98,6 +98,8 @@
     .form-group.full-width { grid-column: 1 / -1; }
     .form-label { font-size: 13px; font-weight: 600; color: #444; }
     .required { color: #e74c3c; margin-left: 3px; }
+    .optional-label { font-size: 12px; font-weight: 400; color: #888; margin-left: 4px; }
+    .form-hint { font-size: 11px; color: #999; margin: 2px 0 0; }
     .form-input {
       padding: 9px 12px;
       border: 1.5px solid #d0d7de;
@@ -544,6 +546,13 @@
             </select>
           </div>
 
+          <div class="form-group full-width">
+            <label class="form-label" for="email">メールアドレス<span class="optional-label">（任意）</span></label>
+            <input class="form-input" type="email" id="email" name="email"
+                   placeholder="例：yamada@example.com（入力しなくても進めます）" />
+            <p class="form-hint">結果の通知等に使用する場合のみご入力ください。空欄のままでも構いません。</p>
+          </div>
+
         </div>
         <!-- 職場コード（非表示） -->
         <input type="hidden" id="workplace_code" name="workplace_code" />
@@ -764,7 +773,8 @@
       birth_date:     document.getElementById('birth_date').value.replace(/-/g, '/'),
       gender:         document.querySelector('input[name="gender"]:checked')?.value,
       workplace_code: document.getElementById('workplace_code').value.trim(),
-      workplace_name: document.getElementById('workplace_name').value.trim()
+      workplace_name: document.getElementById('workplace_name').value.trim(),
+      email:          document.getElementById('email').value.trim()
     };
 
     // 未回答チェック
