@@ -169,16 +169,23 @@ def analyze_stress(answers):
     # 2. 評価点（ep）に変換
     ep = {key: _get_ep(g, key, val) for key, val in raw.items()}
 
-    # 3. 各領域 ep 合計（方式その2: 単純ep合計）
-    sumA = sum(ep[k] for k in ['A1_quantity','A2_quality','A3_physical',
-                                'A4_interpersonal','A5_environment',
-                                'A6_control','A7_skill','A8_suitability','A9_reward'])
-    sumB = sum(ep[k] for k in ['B1_vigor','B2_irritation','B3_fatigue',
-                                'B4_anxiety','B5_depression','B6_physical'])
-    sumC = sum(ep[k] for k in ['C1_boss','C2_coworker','C3_family'])  # D1は除外
+    # 3. ヘルススコア合計（フロントエンド表示と完全一致させる）
+    # STAR軸（★）: ep をそのまま使用（高ep=良好）
+    # 非STAR軸（非★）: 6-ep に変換（低ep=良好 → 外周=良好に統一）
+    # この変換により「合計点が高いほど良い状態」に統一される
+    _STAR = frozenset({'A6_control','A7_skill','A8_suitability','A9_reward',
+                       'B1_vigor','C1_boss','C2_coworker','C3_family','D1_satisfaction'})
+    def _h(k): return ep[k] if k in _STAR else (6 - ep[k])
+
+    sumA = (_h('A1_quantity') + _h('A2_quality') + _h('A3_physical') +
+            _h('A4_interpersonal') + _h('A5_environment') +
+            _h('A6_control') + _h('A7_skill') + _h('A8_suitability') + _h('A9_reward'))
+    sumB = (_h('B1_vigor') + _h('B2_irritation') + _h('B3_fatigue') +
+            _h('B4_anxiety') + _h('B5_depression') + _h('B6_physical'))
+    sumC = _h('C1_boss') + _h('C2_coworker') + _h('C3_family')  # D1は除外
 
     # 4. 高ストレス判定（厚労省方式 素点換算表を用いた評価基準 その2）
-    # 条件①: 領域B合計 ≤ 12
+    # 条件①: 領域B合計（健康スコア合計, 6-30点）≤ 12
     # 条件②: 領域B合計 ≤ 17 かつ (領域A + 領域C)合計 ≤ 26
     is_high_stress = (sumB <= 12) or (sumB <= 17 and (sumA + sumC) <= 26)
 
