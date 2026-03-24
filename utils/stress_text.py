@@ -120,7 +120,7 @@ _B_ITEMS = {
         'detail': (
             '気力や意欲が低下している状態が続いており心配です。'
             '無理に頑張ろうとせず、まず十分な休息を確保することが先決です。'
-            '改善が見られない場合は、産業医や専門の相談窓口を頼ってください。'
+            '休んでも改善しない場合は、一人で抱え込まず誰かに話してみましょう。'
         ),
     },
     'B2_irritation': {
@@ -136,7 +136,7 @@ _B_ITEMS = {
         'detail': (
             '強い疲労感が出ています。'
             '心身のエネルギーが枯渇しつつあるサインであるため、'
-            'まずは十分な睡眠と休息をとることを【最優先】にしてください。'
+            'まずは十分な睡眠と休息をとることを優先してください。'
             '疲れを「気力でカバー」しようとすることは禁物です。'
         ),
     },
@@ -152,8 +152,8 @@ _B_ITEMS = {
         'label':  '抑うつ感・気分の落ち込み',
         'detail': (
             '気分の落ち込みや、やる気が起きない状態が続いており心配です。'
-            '無理に頑張ろうとせず、必要に応じて産業医や専門の相談窓口を頼ってください。'
-            '早めのサポートが回復を早めます。'
+            '無理に頑張ろうとせず、まずは休息と気分転換を意識的に取り入れてください。'
+            '早めにサポートを求めることが回復を早めます。'
         ),
     },
     'B6_physical': {
@@ -161,7 +161,7 @@ _B_ITEMS = {
         'detail': (
             '頭痛・肩こり・胃腸不調など、身体的なサインが出ています。'
             'これらは心身の疲弊を示すシグナルであることが多いです。'
-            'まずは十分な睡眠と休息を【最優先】にし、'
+            'まずは十分な睡眠と休息をとることを優先し、'
             '症状が続く場合は医療機関への受診も検討してください。'
         ),
     },
@@ -220,31 +220,24 @@ def _a_summary(sumA, a_problems):
 
 def _b_summary(sumB, b_problems, is_high_stress):
     if sumB >= 24:
-        text = (
+        return 'good', f'{sumB} 点　良好', (
             '心身のストレス反応について、特に異常なサインは見られず、健康的な状態です。'
             '引き続きご自身のケアを大切にしてください。'
         )
-        if is_high_stress:
-            text += '　なお高ストレス者判定に該当しているため、産業医への面接指導もご検討ください。'
-        return 'good', f'{sumB} 点　良好', text
     elif sumB >= 18:
         base = '心身のストレス反応は中程度です。'
         if b_problems:
             labels = '・'.join(p['label'] for p in b_problems)
             base += f'「{labels}」については意識的にセルフケアを行いましょう。'
-        if is_high_stress:
-            base += '産業医への面接指導もあわせてご検討ください。'
         return 'mid', f'{sumB} 点　中程度', base
     elif sumB >= 13:
         base = '心身のストレス反応が高めの状態です。十分な休息と気分転換を心がけてください。'
         if b_problems:
             labels = '・'.join(p['label'] for p in b_problems)
             base += f'「{labels}」の傾向がみられます。'
-        if is_high_stress:
-            base += '産業医への面接指導を積極的にご検討ください。'
         return 'high', f'{sumB} 点　高い', base
     else:
-        base = '心身のストレス反応が著しく高い状態です。早急に休息を確保し、産業医への相談を強くお勧めします。'
+        base = '心身のストレス反応が著しく高い状態です。心身のサインが強く出ているため、十分な休息を早急に確保してください。'
         if b_problems:
             labels = '・'.join(p['label'] for p in b_problems)
             base += f'特に「{labels}」が顕著にみられます。'
@@ -423,17 +416,8 @@ def generate_advice(ep, sumA, sumB, sumC, is_high_stress, name=''):
     b_level, b_level_text, b_summary_text = _b_summary(sumB, b_problems, is_high_stress)
     c_level, c_level_text, c_summary_text = _c_summary(sumC, c_problems)
 
-    # 高ストレス判定の場合は B 領域 problems に産業医誘導カードを先頭追加
-    # （B の summary_text にも記載済みだが、問題項目として視覚的に目立たせる）
-    if is_high_stress and b_level in ('very_high', 'high'):
-        b_problems.insert(0, {
-            'label': '【高ストレス者判定】産業医への面接指導について',
-            'detail': (
-                '今回の判定では高ストレス者に該当しています。'
-                '産業医による面接指導は無料で受けられ、評価に影響しません。'
-                '希望される場合は人事担当者または実施者にお申し出ください。'
-            ),
-        })
+    # 高ストレス判定時の産業医案内は画面上部の総合判定バナーで表示済みのため
+    # B 領域には挿入しない（重複排除）
 
     # ── 全体の問題有無 ────────────────────────────────────────────────────
     any_problems = bool(a_problems or b_problems or c_problems)
