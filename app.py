@@ -5,6 +5,7 @@ import datetime
 import io
 import csv
 import openpyxl
+from utils.stress_text import generate_advice
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, make_response
 
@@ -213,6 +214,9 @@ def analyze_stress(answers):
     else:
         advice_text += "現在のところ、全体的なバランスは比較的良好に保たれています。引き続きセルフケアを継続してください。"
 
+    # 個別アドバイス生成（ep合計はA/B/Cそれぞれ単純合計）
+    advice_detail = generate_advice(ep, sumA, sumB, sumC, is_high_stress)
+
     return {
         'is_high_stress': is_high_stress,
         'radar_scores': radar_scores,
@@ -221,7 +225,8 @@ def analyze_stress(answers):
             'domain_b': domain_b_avg,
             'domain_c': domain_c_avg
         },
-        'advice_text': advice_text
+        'advice_text': advice_text,
+        'advice_detail': advice_detail,
     }
 
 # ==========================================
@@ -261,6 +266,9 @@ def show_result():
         result_data['answers_json'] = json.dumps(
             {f'q{i}': 3 for i in range(1, 58)}, ensure_ascii=False
         )
+    # 古いセッション（advice_detail なし）への後方互換フォールバック
+    if 'advice_detail' not in result_data:
+        result_data['advice_detail'] = {}
     return render_template('result.html', **result_data)
 
 # ==========================================
@@ -309,6 +317,7 @@ def submit_data():
         'radar_scores': analysis['radar_scores'],
         'bars': analysis['bars'],
         'advice_text': analysis['advice_text'],
+        'advice_detail': analysis['advice_detail'],
         'answers_json': json.dumps(raw_answers, ensure_ascii=False),
     }
     
