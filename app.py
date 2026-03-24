@@ -264,30 +264,56 @@ def admin():
 
 @app.route('/result')
 def show_result():
-    # 従業員の個人結果レポート画面
-    # result_id を URL クエリパラメータから取得し、対応するセッションキーを参照する。
-    # これにより複数タブ・連続送信でのデータ混線を防ぐ。
+    """
+    従業員の個人結果レポート画面。
+    セッションは使用しない（クッキーサイズ上限問題を回避）。
+    URL パラメータ result_id で DB レコードを特定し、
+    analyze_stress() を再実行してテンプレートに渡す。
+    """
     result_id = request.args.get('result_id', type=int)
     if not result_id:
         return redirect(url_for('index'))
 
-    session_key = f'result_{result_id}'
-    result_data = session.get(session_key)
-    if not result_data:
+    # DB からレコードを1件取得
+    conn = get_db_connection()
+    row = conn.execute(
+        'SELECT * FROM responses WHERE id = ?', (result_id,)
+    ).fetchone()
+    conn.close()
+
+    if not row:
         return redirect(url_for('index'))
 
-    # 表示後はセッションから削除してメモリを解放
-    session.pop(session_key, None)
+    # answers_json からフォーム送信時のデータを復元
+    try:
+        submitted = json.loads(row['answers_json'])
+    except Exception:
+        submitted = {}
 
-    # 古いセッション（answers_json なし）への後方互換フォールバック
-    if 'answers_json' not in result_data:
-        result_data['answers_json'] = json.dumps(
-            {f'q{i}': 3 for i in range(1, 58)}, ensure_ascii=False
-        )
-    # 古いセッション（advice_detail なし）への後方互換フォールバック
-    if 'advice_detail' not in result_data:
-        result_data['advice_detail'] = {}
-    return render_template('result.html', **result_data)
+    # スコア・アドバイスを再計算（DB 保存済みデータから確実に復元）
+    analysis = analyze_stress(submitted)
+
+    # フロント React 用に q1〜q57 の生回答だけ抽出
+    raw_answers = {f'q{i}': int(submitted.get(f'q{i}', 3)) for i in range(1, 58)}
+
+    # 保存日時を exam_date として使用
+    created_at = row['created_at'] or ''
+    exam_date = created_at[:10] if created_at else datetime.datetime.now().strftime('%Y-%m-%d')
+
+    return render_template('result.html',
+        employee_id   = row['employee_id'],
+        name          = row['name'],
+        workplace_name= row['workplace_name'],
+        exam_date     = exam_date,
+        ref_number    = f"SC-{result_id:04d}",
+        gender        = submitted.get('gender', ''),
+        is_high_stress= analysis['is_high_stress'],
+        radar_scores  = analysis['radar_scores'],
+        bars          = analysis['bars'],
+        advice_text   = analysis['advice_text'],
+        advice_detail = analysis['advice_detail'],
+        answers_json  = json.dumps(raw_answers, ensure_ascii=False),
+    )
 
 # ==========================================
 # APIエンドポイント（データ処理）
@@ -320,29 +346,9 @@ def submit_data():
     conn.commit()
     conn.close()
 
-    # 3. 結果画面に渡すデータをセッションに保存
-    # キーを 'result_<row_id>' にすることで、複数タブや連続送信でも混線しない
-    today_str = datetime.datetime.now().strftime('%Y-%m-%d')
-    # q1〜q57 の生の回答を抽出（フロントのReactで再計算するため）
-    raw_answers = {f'q{i}': int(data.get(f'q{i}', 3)) for i in range(1, 58)}
-    session_key = f'result_{row_id}'
-    session[session_key] = {
-        'employee_id': str(row_id),
-        'name': data.get('name', ''),
-        'workplace_name': data.get('workplace_name', ''),
-        'exam_date': today_str,
-        'ref_number': f"SC-{row_id:04d}",
-        'gender': data.get('gender', ''),
-        'is_high_stress': analysis['is_high_stress'],
-        'radar_scores': analysis['radar_scores'],
-        'bars': analysis['bars'],
-        'advice_text': analysis['advice_text'],
-        'advice_detail': analysis['advice_detail'],
-        'answers_json': json.dumps(raw_answers, ensure_ascii=False),
-    }
-
-    # 4. フロントエンドに「成功したから結果画面に飛んでね」と返す
-    # result_id をURLに含めることで、どの受検結果を表示するかを明示する
+    # 3. フロントエンドにリダイレクト先を返す
+    # セッションは使用しない（クッキーサイズ上限問題を回避）。
+    # result_id を URL に含めるだけで、show_result() が DB から再構築する。
     return jsonify({'success': True, 'redirect_url': url_for('show_result', result_id=row_id)})
 
 # ----------------- 職場管理API -----------------
