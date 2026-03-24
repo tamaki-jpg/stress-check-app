@@ -394,59 +394,105 @@
           </div>
 
           {/* ── 個別アドバイスセクション ── */}
-          {adv.area_a && (
-            <div style={S.card}>
-              <h3 style={{...S.sec,marginBottom:14}}>📊 個々の領域におけるストレス状況</h3>
+          {adv.area_a && (() => {
+            // 領域ごとの色定義
+            const LEVEL_COLOR = {
+              very_high: {bg:'#fef2f2', border:'#fca5a5', badge:'#dc2626', badgeTxt:'white'},
+              high:      {bg:'#fff7ed', border:'#fdba74', badge:'#ea580c', badgeTxt:'white'},
+              low:       {bg:'#fef2f2', border:'#fca5a5', badge:'#dc2626', badgeTxt:'white'},
+              mid:       {bg:'#fffbeb', border:'#fcd34d', badge:'#d97706', badgeTxt:'white'},
+              good:      {bg:'#f0fdf4', border:'#86efac', badge:'#16a34a', badgeTxt:'white'},
+            };
+            const getColor = (level) =>
+              LEVEL_COLOR[level] || LEVEL_COLOR.mid;
 
-              {/* A/B/C 各領域コメント */}
-              {[
-                {label:'【A】ストレスの原因', area: adv.area_a,
-                 colors:{high:{bg:'#fef2f2',border:'#fca5a5',hd:'#991b1b'},
-                         mid: {bg:'#fffbeb',border:'#fcd34d',hd:'#92400e'},
-                         good:{bg:'#f0fdf4',border:'#86efac',hd:'#166534'}}},
-                {label:'【B】心身のストレス反応', area: adv.area_b,
-                 colors:{very_high:{bg:'#fef2f2',border:'#fca5a5',hd:'#991b1b'},
-                         high:     {bg:'#fff7ed',border:'#fdba74',hd:'#9a3412'},
-                         mid:      {bg:'#fffbeb',border:'#fcd34d',hd:'#92400e'},
-                         good:     {bg:'#f0fdf4',border:'#86efac',hd:'#166534'}}},
-                {label:'【C】周囲のサポート', area: adv.area_c,
-                 colors:{low: {bg:'#fef2f2',border:'#fca5a5',hd:'#991b1b'},
-                         mid: {bg:'#fffbeb',border:'#fcd34d',hd:'#92400e'},
-                         good:{bg:'#f0fdf4',border:'#86efac',hd:'#166534'}}},
-              ].map(({label, area, colors}) => {
-                const c = colors[area.level] || colors.mid || {bg:'#f9fafb',border:'#d1d5db',hd:'#374151'};
-                return (
-                  <div key={label} style={{background:c.bg,border:`1.5px solid ${c.border}`,
-                      borderRadius:8,padding:'12px 16px',marginBottom:10}}>
-                    <div style={{fontSize:12,fontWeight:700,color:c.hd,marginBottom:4}}>{label}</div>
-                    <div style={{fontSize:13,color:'#374151',lineHeight:1.85}}>{area.text}</div>
+            // 領域ブロック描画ヘルパー
+            const AreaBlock = ({domainLabel, area}) => {
+              const c = getColor(area.level);
+              return (
+                <div style={{background:c.bg, border:`1.5px solid ${c.border}`,
+                    borderRadius:10, padding:'14px 16px', marginBottom:12}}>
+                  {/* 領域名 + 合計点バッジ */}
+                  <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8,flexWrap:'wrap'}}>
+                    <span style={{fontSize:13,fontWeight:700,color:'#1e293b'}}>{domainLabel}</span>
+                    <span style={{fontSize:11,background:c.badge,color:c.badgeTxt,
+                        borderRadius:20,padding:'2px 10px',fontWeight:600}}>
+                      {area.level_text}
+                    </span>
                   </div>
-                );
-              })}
 
-              {/* セルフケアのポイント */}
-              <h3 style={{...S.sec,marginTop:20,marginBottom:10}}>
-                🌿 セルフケアのポイント（こころの耳より）
-              </h3>
-              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))',gap:10}}>
-                {(adv.selfcare || []).map(tip => (
-                  <div key={tip.key} style={{background:'#f8faff',border:'1px solid #bfdbfe',
-                      borderRadius:8,padding:'12px 14px'}}>
-                    <div style={{fontSize:13,fontWeight:700,color:'#1e40af',marginBottom:6}}>
-                      {tip.icon}　{tip.title}
-                    </div>
-                    <ul style={{paddingLeft:16,margin:0}}>
-                      {(tip.items || []).map((item, i) => (
-                        <li key={i} style={{fontSize:12,color:'#374151',lineHeight:1.8,marginBottom:2}}>
-                          {item}
-                        </li>
+                  {/* ep<=2 の問題項目 */}
+                  {area.problems && area.problems.length > 0 ? (
+                    <div>
+                      <div style={{fontSize:12,color:'#64748b',marginBottom:6}}>
+                        ⚠️ 特に以下の項目でストレスのサインが見られます：
+                      </div>
+                      {area.problems.map((p, i) => (
+                        <div key={i} style={{background:'white',border:'1px solid #e2e8f0',
+                            borderRadius:7,padding:'10px 13px',marginBottom:7}}>
+                          <div style={{fontSize:12,fontWeight:700,color:'#be123c',marginBottom:4}}>
+                            ▶ {p.label}
+                          </div>
+                          <div style={{fontSize:12,color:'#374151',lineHeight:1.85}}>
+                            {p.detail}
+                          </div>
+                        </div>
                       ))}
-                    </ul>
+                    </div>
+                  ) : (
+                    <div style={{fontSize:12,color:'#166534',display:'flex',alignItems:'center',gap:4}}>
+                      ✅ この領域では特に問題となる項目は見当たりません。
+                    </div>
+                  )}
+                </div>
+              );
+            };
+
+            return (
+              <div style={S.card}>
+                <h3 style={{...S.sec,marginBottom:14}}>📊 個々の領域におけるストレス状況</h3>
+
+                {/* 全良好メッセージ */}
+                {!adv.any_problems && (
+                  <div style={{background:'#f0fdf4',border:'1.5px solid #86efac',borderRadius:8,
+                      padding:'12px 16px',marginBottom:14,fontSize:13,color:'#166534',lineHeight:1.8}}>
+                    ✅ {adv.all_ok_message}
                   </div>
-                ))}
+                )}
+
+                <AreaBlock domainLabel="【A領域】ストレスの原因と考えられる因子" area={adv.area_a} />
+                <AreaBlock domainLabel="【B領域】ストレスによっておこる心身の反応" area={adv.area_b} />
+                <AreaBlock domainLabel="【C領域】ストレス反応に影響を与える他の因子（サポート）" area={adv.area_c} />
+
+                {/* セルフケアのポイント */}
+                <h3 style={{...S.sec,marginTop:20,marginBottom:6}}>
+                  🌿 セルフケアのポイント（こころの耳より）
+                </h3>
+                {/* 繋ぎの文 */}
+                <p style={{fontSize:12,color:'#475569',marginBottom:12,lineHeight:1.8,
+                    background:'#f8faff',border:'1px solid #bfdbfe',borderRadius:6,padding:'8px 12px'}}>
+                  {adv.selfcare_intro}
+                </p>
+                <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))',gap:10}}>
+                  {(adv.selfcare || []).map(tip => (
+                    <div key={tip.key} style={{background:'#f8faff',border:'1px solid #bfdbfe',
+                        borderRadius:8,padding:'12px 14px'}}>
+                      <div style={{fontSize:13,fontWeight:700,color:'#1e40af',marginBottom:6}}>
+                        {tip.icon}　{tip.title}
+                      </div>
+                      <ul style={{paddingLeft:16,margin:0}}>
+                        {(tip.items || []).map((item, i) => (
+                          <li key={i} style={{fontSize:12,color:'#374151',lineHeight:1.8,marginBottom:2}}>
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* 相談窓口 */}
           <div style={S.card}>
