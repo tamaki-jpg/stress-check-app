@@ -12,6 +12,19 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Noto Sans JP', 'Helvetica Neue', sans-serif; background: #f2f5ee; }
     #loading { display:flex; align-items:center; justify-content:center; height:100vh; font-size:16px; color:#559018; }
+    /* レーダーチャートグリッド: スマホ1列 / PC3列 */
+    .radar-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 20px;
+      margin-bottom: 12px;
+    }
+    @media (min-width: 768px) {
+      .radar-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 14px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -331,7 +344,7 @@
           )}
 
           {/* レーダーチャート3枚 */}
-          <div style={S.charts}>
+          <div className="radar-grid">
             <SVGRadar title="ストレスの原因と考えられる因子" data={prof.factors}   isHigh={isHigh}/>
             <SVGRadar title="ストレスによっておこる心身の反応"  data={prof.reactions} isHigh={isHigh}/>
             <SVGRadar title="ストレス反応に影響を与える他の因子" data={prof.supports}  isHigh={isHigh}/>
@@ -426,7 +439,7 @@
       icon:      {fontSize:24,flexShrink:0,marginTop:1},
       bHead:     {fontSize:15,fontWeight:700,marginBottom:3},
       bBody:     {fontSize:12,color:'#374151',lineHeight:1.7},
-      charts:        {display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:14,marginBottom:12},
+      charts:        {},  /* CSSクラス radar-grid に移行 */
       chartCard:     {background:'white',borderRadius:10,padding:'14px 6px 8px',boxShadow:'0 2px 8px rgba(0,0,0,0.07)'},
       chartTitle:    {fontSize:12,fontWeight:700,textAlign:'center',marginBottom:2},
       chartNote:     {fontSize:9,textAlign:'center',color:'#9ca3af',marginTop:2},
