@@ -222,7 +222,8 @@ def analyze_stress(answers):
         advice_text += "現在のところ、全体的なバランスは比較的良好に保たれています。引き続きセルフケアを継続してください。"
 
     # 個別アドバイス生成（ep合計はA/B/Cそれぞれ単純合計）
-    advice_detail = generate_advice(ep, sumA, sumB, sumC, is_high_stress)
+    advice_detail = generate_advice(ep, sumA, sumB, sumC, is_high_stress,
+                                    name=answers.get('name', ''))
 
     return {
         'is_high_stress': is_high_stress,
