@@ -6,15 +6,16 @@ stress_text.py
       1 = 最も悪い（高ストレス）、5 = 最も良い　に統一済み。
       ep <= 2 のものを「問題あり（ストレスのサインあり）」として判定する。
 
-改訂方針：
-  ・合計点によるざっくり評価は冒頭の一言にとどめる
-  ・ep<=2 の個別項目を最優先でピックアップし、項目ごとのピンポイントアドバイスを出力
-  ・セルフケア欄は「上記で挙げたサインに対して」という文脈で繋ぐ
-  ・ep<=2 が1つもない場合は肯定的フォローを出力
+設計方針：
+  ・各領域の合計点を主軸として「良好／中程度／高負荷」を判定し、
+    受検者が状況を把握しやすい summary_text を必ず出力する
+  ・良好の場合は「適正範囲内です」等の安心できるポジティブ表現を使用
+  ・中程度以上の場合は ep<=2 の個別項目があればピンポイントで言及
+  ・セルフケア該当ゼロの場合も温かいフォローメッセージを表示
 """
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 各尺度：ラベル + 個別アドバイス文
+# 各尺度：ラベル + ep<=2 時の個別アドバイス文
 # ─────────────────────────────────────────────────────────────────────────────
 
 _A_ITEMS = {
@@ -30,7 +31,7 @@ _A_ITEMS = {
         'label':  '仕事の質的負担（質的過負荷）',
         'detail': (
             '仕事の難易度・複雑さが精神的な負荷となっています。'
-            '不明点をそのままにせず早めに確認する習慣や、'
+            '不明点はそのままにせず早めに確認する習慣や、'
             '必要であればサポートを求めることが重要です。'
         ),
     },
@@ -172,40 +173,86 @@ _C_ITEMS = {
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 合計点 → 一言評価文
+# 合計点 → レベル判定 + summary_text（必ず出力される本文）
 # ─────────────────────────────────────────────────────────────────────────────
 
-def _a_level_info(sumA):
-    if sumA <= 22:
-        return 'high',     f'合計 {sumA} 点 ─ 全体的に負荷が高い状態（要注意）'
-    elif sumA <= 34:
-        return 'mid',      f'合計 {sumA} 点 ─ 一部負荷あり、概ね普通の範囲'
+def _a_summary(sumA, a_problems):
+    if sumA >= 35:
+        return 'good', f'合計 {sumA} 点 ─ 良好', (
+            '仕事のストレス要因について、現在のところ適正な範囲内です。'
+            'ご自身のペースで良好な状態が保たれていますので、今の働き方を継続してください。'
+        )
+    elif sumA >= 23:
+        base = '仕事の負荷は中程度であり、概ね通常の範囲内です。'
+        if a_problems:
+            labels = '・'.join(p['label'] for p in a_problems)
+            base += f'ただし「{labels}」については引き続き注意が必要です。'
+        return 'mid', f'合計 {sumA} 点 ─ 概ね普通', base
     else:
-        return 'good',     f'合計 {sumA} 点 ─ 全体的に良好な状態'
+        base = '仕事の負荷が高くなっています。無理をしすぎず、早めに対処することが大切です。'
+        if a_problems:
+            labels = '・'.join(p['label'] for p in a_problems)
+            base += f'特に「{labels}」の点で強いストレスが見られます。'
+        return 'high', f'合計 {sumA} 点 ─ 要注意', base
 
 
-def _b_level_info(sumB):
-    if sumB <= 12:
-        return 'very_high', f'合計 {sumB} 点 ─ 心身の反応が著しく高い（高ストレス判定条件に相当）'
-    elif sumB <= 17:
-        return 'high',      f'合計 {sumB} 点 ─ 心身の反応が高め（要注意）'
-    elif sumB <= 23:
-        return 'mid',       f'合計 {sumB} 点 ─ 中程度、一部注意が必要'
+def _b_summary(sumB, b_problems, is_high_stress):
+    if sumB >= 24:
+        text = (
+            '心身のストレス反応について、特に異常なサインは見られず、健康的な状態です。'
+            '引き続きご自身のケアを大切にしてください。'
+        )
+        if is_high_stress:
+            text += '　なお高ストレス者判定に該当しているため、産業医への面接指導もご検討ください。'
+        return 'good', f'合計 {sumB} 点 ─ 良好', text
+    elif sumB >= 18:
+        base = '心身のストレス反応は中程度であり、概ね適正な範囲内です。'
+        if b_problems:
+            labels = '・'.join(p['label'] for p in b_problems)
+            base += f'「{labels}」については意識的にセルフケアを行いましょう。'
+        if is_high_stress:
+            base += '産業医への面接指導もあわせてご検討ください。'
+        return 'mid', f'合計 {sumB} 点 ─ 中程度', base
+    elif sumB >= 13:
+        base = '心身のストレス反応が高めの状態です（要注意）。十分な休息と気分転換を心がけてください。'
+        if b_problems:
+            labels = '・'.join(p['label'] for p in b_problems)
+            base += f'「{labels}」の傾向がみられます。'
+        if is_high_stress:
+            base += '産業医への面接指導を積極的にご検討ください。'
+        return 'high', f'合計 {sumB} 点 ─ 要注意', base
     else:
-        return 'good',      f'合計 {sumB} 点 ─ 良好な状態'
+        base = '心身のストレス反応が著しく高い状態です（高ストレス判定の条件に相当）。早急に休息を確保し、産業医への相談を強くお勧めします。'
+        if b_problems:
+            labels = '・'.join(p['label'] for p in b_problems)
+            base += f'特に「{labels}」が顕著にみられます。'
+        return 'very_high', f'合計 {sumB} 点 ─ 著しく高い', base
 
 
-def _c_level_info(sumC):
-    if sumC <= 6:
-        return 'low',  f'合計 {sumC} 点 ─ サポートが不足している状態'
-    elif sumC <= 11:
-        return 'mid',  f'合計 {sumC} 点 ─ 概ね普通、一部注意'
+def _c_summary(sumC, c_problems):
+    if sumC >= 12:
+        return 'good', f'合計 {sumC} 点 ─ 充実', (
+            '周囲からのサポート体制は十分に充実しています。'
+            '今後も職場やご家族との良好なコミュニケーションを大切にしてください。'
+        )
+    elif sumC >= 7:
+        base = '周囲からのサポートは概ね標準的です。'
+        if c_problems:
+            parts = '・'.join(p['label'] for p in c_problems)
+            base += f'「{parts}」については、困ったときに遠慮なく相談してみましょう。'
+        else:
+            base += '困ったことがあれば、遠慮なく周囲に声をかけてみましょう。'
+        return 'mid', f'合計 {sumC} 点 ─ 概ね普通', base
     else:
-        return 'good', f'合計 {sumC} 点 ─ サポートが充実している状態'
+        base = '周囲からのサポートが不足している状態です。社内外の相談窓口の積極的な活用をご検討ください。'
+        if c_problems:
+            parts = '・'.join(p['label'] for p in c_problems)
+            base += f'特に「{parts}」でサポートが低い傾向にあります。'
+        return 'low', f'合計 {sumC} 点 ─ 不足', base
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# セルフケアカタログ（キーと条件の対応）
+# セルフケアカタログ
 # ─────────────────────────────────────────────────────────────────────────────
 
 _SELFCARE_CATALOG = {
@@ -269,7 +316,6 @@ _SELFCARE_CATALOG = {
 
 
 def _build_selfcare(ep, sumA, is_high_stress):
-    """ep<=2 の項目に基づいてセルフケアキーを選択し返す"""
     vigor      = ep.get('B1_vigor', 3)
     fatigue    = ep.get('B3_fatigue', 3)
     depression = ep.get('B5_depression', 3)
@@ -283,7 +329,6 @@ def _build_selfcare(ep, sumA, is_high_stress):
     c_family   = ep.get('C3_family', 3)
 
     keys = []
-
     if fatigue <= 2 or vigor <= 2 or physical <= 2:
         keys.append('sleep')
     if depression <= 2 or vigor <= 2:
@@ -297,9 +342,7 @@ def _build_selfcare(ep, sumA, is_high_stress):
     if c_boss <= 2 or c_coworker <= 2 or c_family <= 2 or is_high_stress:
         keys.append('consultation')
 
-    # 重複除去（順序維持）
-    seen = set()
-    result = []
+    seen, result = set(), []
     for k in keys:
         if k not in seen:
             seen.add(k)
@@ -325,33 +368,36 @@ def generate_advice(ep, sumA, sumB, sumC, is_high_stress):
     -------
     dict
       any_problems  : bool
-      all_ok_message: str   (any_problems=False の場合に表示)
-      area_a        : {level, level_text, problems:[{label,detail}]}
-      area_b        : {level, level_text, problems:[{label,detail}]}
-      area_c        : {level, level_text, problems:[{label,detail}]}
+      all_ok_message: str
+      area_a        : {level, level_text, summary_text, problems:[{label,detail}]}
+      area_b        : {level, level_text, summary_text, problems:[{label,detail}]}
+      area_c        : {level, level_text, summary_text, problems:[{label,detail}]}
       selfcare_intro: str
       selfcare      : [{key, icon, title, items}]
     """
 
-    # ── A領域 ────────────────────────────────────────────────────────────────
-    a_level, a_level_text = _a_level_info(sumA)
+    # ── 各領域 ep<=2 の問題項目を抽出 ──────────────────────────────────────
     a_problems = [
-        {'label': info['label'], 'detail': info['detail']}
-        for key, info in _A_ITEMS.items()
-        if ep.get(key, 3) <= 2
+        {'label': v['label'], 'detail': v['detail']}
+        for k, v in _A_ITEMS.items() if ep.get(k, 3) <= 2
+    ]
+    b_problems = [
+        {'label': v['label'], 'detail': v['detail']}
+        for k, v in _B_ITEMS.items() if ep.get(k, 3) <= 2
+    ]
+    c_problems = [
+        {'label': v['label'], 'detail': v['detail']}
+        for k, v in _C_ITEMS.items() if ep.get(k, 3) <= 2
     ]
 
-    # ── B領域 ────────────────────────────────────────────────────────────────
-    b_level, b_level_text = _b_level_info(sumB)
-    b_problems = [
-        {'label': info['label'], 'detail': info['detail']}
-        for key, info in _B_ITEMS.items()
-        if ep.get(key, 3) <= 2
-    ]
-    # 高ストレス判定の場合は産業医誘導を B の先頭に追加
-    if is_high_stress and not any(
-        ep.get(k, 3) <= 2 for k in ('B1_vigor', 'B5_depression')
-    ):
+    # ── 合計点 → レベル + summary_text ─────────────────────────────────────
+    a_level, a_level_text, a_summary_text = _a_summary(sumA, a_problems)
+    b_level, b_level_text, b_summary_text = _b_summary(sumB, b_problems, is_high_stress)
+    c_level, c_level_text, c_summary_text = _c_summary(sumC, c_problems)
+
+    # 高ストレス判定の場合は B 領域 problems に産業医誘導カードを先頭追加
+    # （B の summary_text にも記載済みだが、問題項目として視覚的に目立たせる）
+    if is_high_stress and b_level in ('very_high', 'high'):
         b_problems.insert(0, {
             'label': '【高ストレス者判定】産業医への面接指導について',
             'detail': (
@@ -361,31 +407,23 @@ def generate_advice(ep, sumA, sumB, sumC, is_high_stress):
             ),
         })
 
-    # ── C領域 ────────────────────────────────────────────────────────────────
-    c_level, c_level_text = _c_level_info(sumC)
-    c_problems = [
-        {'label': info['label'], 'detail': info['detail']}
-        for key, info in _C_ITEMS.items()
-        if ep.get(key, 3) <= 2
-    ]
-
-    # ── 全体の問題有無 ────────────────────────────────────────────────────────
-    all_problems = a_problems + b_problems + c_problems
-    any_problems = len(all_problems) > 0
+    # ── 全体の問題有無 ────────────────────────────────────────────────────
+    any_problems = bool(a_problems or b_problems or c_problems)
 
     all_ok_message = (
-        '現在、客観的に見て著しくケアが必要な項目は見当たりません。'
-        'ご自身の良い状態を保つために、今後もセルフケアを継続してください。'
+        '今回のストレスチェック結果において、客観的に見て著しくケアが必要な項目は'
+        '見当たりませんでした。心身ともに適正な範囲内の状態が保たれています。'
+        'ご自身の良い状態を継続するために、引き続きセルフケアをお忘れなく。'
     )
 
-    # ── セルフケア ────────────────────────────────────────────────────────────
+    # ── セルフケア ────────────────────────────────────────────────────────
     selfcare = _build_selfcare(ep, sumA, is_high_stress)
 
-    # 繋ぎの文（問題あり/なしで分岐）
+    # 繋ぎの文
     if any_problems:
-        problem_labels = [p['label'] for p in all_problems[:3]]
-        label_str = '・'.join(problem_labels)
-        suffix = '等' if len(all_problems) > 3 else ''
+        all_labels = [p['label'] for p in (a_problems + b_problems + c_problems)]
+        label_str  = '・'.join(all_labels[:3])
+        suffix     = '等' if len(all_labels) > 3 else ''
         selfcare_intro = (
             f'上記で挙げた「{label_str}{suffix}」のサインに対して、'
             '以下のセルフケアを参考にしてみてください。'
@@ -393,33 +431,42 @@ def generate_advice(ep, sumA, sumB, sumC, is_high_stress):
     else:
         selfcare_intro = (
             '現在特に問題は見当たりませんが、'
-            '良好な状態を維持するために以下のセルフケアを継続してください。'
+            '良好な状態を維持するために以下を継続してください。'
         )
 
-    # セルフケアが0件の場合（全良好 & 高ストレスでもない）
+    # セルフケアが 0 件（全良好 & 非高ストレス）の場合はメッセージカードを表示
     if not selfcare:
         selfcare = [{
-            'key': 'default', 'icon': '✅', 'title': '現状維持',
-            'items': ['現在の生活習慣を継続し、定期的にストレスチェックを活用してください。'],
+            'key': 'all_good',
+            'icon': '✅',
+            'title': '良好な状態を継続してください',
+            'items': [
+                '現在、心身ともに適正な範囲内であり、特筆すべき強いストレスサインは見られません。',
+                '今の良好な生活習慣や働き方を継続し、'
+                '次回のストレスチェックもご自身の健康管理に役立ててください。',
+            ],
         }]
 
     return {
         'any_problems':   any_problems,
         'all_ok_message': all_ok_message,
         'area_a': {
-            'level':      a_level,
-            'level_text': a_level_text,
-            'problems':   a_problems,
+            'level':        a_level,
+            'level_text':   a_level_text,
+            'summary_text': a_summary_text,
+            'problems':     a_problems,
         },
         'area_b': {
-            'level':      b_level,
-            'level_text': b_level_text,
-            'problems':   b_problems,
+            'level':        b_level,
+            'level_text':   b_level_text,
+            'summary_text': b_summary_text,
+            'problems':     b_problems,
         },
         'area_c': {
-            'level':      c_level,
-            'level_text': c_level_text,
-            'problems':   c_problems,
+            'level':        c_level,
+            'level_text':   c_level_text,
+            'summary_text': c_summary_text,
+            'problems':     c_problems,
         },
         'selfcare_intro': selfcare_intro,
         'selfcare':       selfcare,
