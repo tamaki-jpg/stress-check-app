@@ -265,9 +265,20 @@ def admin():
 @app.route('/result')
 def show_result():
     # 従業員の個人結果レポート画面
-    result_data = session.get('result_data')
+    # result_id を URL クエリパラメータから取得し、対応するセッションキーを参照する。
+    # これにより複数タブ・連続送信でのデータ混線を防ぐ。
+    result_id = request.args.get('result_id', type=int)
+    if not result_id:
+        return redirect(url_for('index'))
+
+    session_key = f'result_{result_id}'
+    result_data = session.get(session_key)
     if not result_data:
         return redirect(url_for('index'))
+
+    # 表示後はセッションから削除してメモリを解放
+    session.pop(session_key, None)
+
     # 古いセッション（answers_json なし）への後方互換フォールバック
     if 'answers_json' not in result_data:
         result_data['answers_json'] = json.dumps(
@@ -310,10 +321,12 @@ def submit_data():
     conn.close()
 
     # 3. 結果画面に渡すデータをセッションに保存
+    # キーを 'result_<row_id>' にすることで、複数タブや連続送信でも混線しない
     today_str = datetime.datetime.now().strftime('%Y-%m-%d')
     # q1〜q57 の生の回答を抽出（フロントのReactで再計算するため）
     raw_answers = {f'q{i}': int(data.get(f'q{i}', 3)) for i in range(1, 58)}
-    session['result_data'] = {
+    session_key = f'result_{row_id}'
+    session[session_key] = {
         'employee_id': str(row_id),
         'name': data.get('name', ''),
         'workplace_name': data.get('workplace_name', ''),
@@ -327,9 +340,10 @@ def submit_data():
         'advice_detail': analysis['advice_detail'],
         'answers_json': json.dumps(raw_answers, ensure_ascii=False),
     }
-    
+
     # 4. フロントエンドに「成功したから結果画面に飛んでね」と返す
-    return jsonify({'success': True, 'redirect_url': url_for('show_result')})
+    # result_id をURLに含めることで、どの受検結果を表示するかを明示する
+    return jsonify({'success': True, 'redirect_url': url_for('show_result', result_id=row_id)})
 
 # ----------------- 職場管理API -----------------
 @app.route('/api/workplaces', methods=['GET', 'POST'])
