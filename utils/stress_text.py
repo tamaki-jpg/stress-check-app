@@ -395,21 +395,33 @@ def generate_advice(ep, sumA, sumB, sumC, is_high_stress, name=''):
       selfcare      : [{key, icon, title, items}]
     """
 
-    # ── 問題項目を抽出（ヘルススコア <= 2 が問題あり）──────────────────────
+    # ── 問題項目を抽出（領域ごとの最小ヘルススコアに一致する項目のみ）──────
     # health(key, ep) = ep if STAR else (6-ep) → 1=最悪, 5=最良
-    # STAR非★の方向を正しく反映: 非★は ep高=悪→health低、★は ep低=悪→health低
-    a_problems = [
-        {'label': v['label'], 'detail': v['detail']}
-        for k, v in _A_ITEMS.items() if _health(k, ep.get(k, 3)) <= 2
-    ]
-    b_problems = [
-        {'label': v['label'], 'detail': v['detail']}
-        for k, v in _B_ITEMS.items() if _health(k, ep.get(k, 3)) <= 2
-    ]
-    c_problems = [
-        {'label': v['label'], 'detail': v['detail']}
-        for k, v in _C_ITEMS.items() if _health(k, ep.get(k, 3)) <= 2
-    ]
+    #
+    # 抽出ルール（領域ごとに独立して適用）:
+    #   1. 領域内の全項目のヘルススコアの中から最小値 (min_h) を求める
+    #   2. min_h が 2 以下の場合のみ抽出処理を実施（3以上なら何も抽出しない）
+    #   3. ヘルススコアが min_h と完全一致する項目だけをピックアップする
+    #
+    # 効果:
+    #   ・「1点と2点が混在」→ 1点の項目だけに絞り込む（論点を鋭く）
+    #   ・「2点が最低」→ 2点の項目を抽出（1点が出ない尺度も救済）
+    #   ・「全項目3点以上」→ 一切抽出しない（余計な指摘を避ける）
+
+    def _extract_problems(items_dict):
+        """領域 items_dict から最悪スコア項目だけを抽出して返す。"""
+        scores = {k: _health(k, ep.get(k, 3)) for k in items_dict}
+        min_h  = min(scores.values())
+        if min_h > 2:
+            return []   # 全項目3点以上 → 問題なし
+        return [
+            {'label': items_dict[k]['label'], 'detail': items_dict[k]['detail']}
+            for k, h in scores.items() if h == min_h
+        ]
+
+    a_problems = _extract_problems(_A_ITEMS)
+    b_problems = _extract_problems(_B_ITEMS)
+    c_problems = _extract_problems(_C_ITEMS)
 
     # ── 合計点 → レベル + summary_text ─────────────────────────────────────
     a_level, a_level_text, a_summary_text = _a_summary(sumA, a_problems)
