@@ -12,6 +12,14 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Noto Sans JP', 'Helvetica Neue', sans-serif; background: #f2f5ee; }
     #loading { display:flex; align-items:center; justify-content:center; height:100vh; font-size:16px; color:#559018; }
+    /* 詳細スコア表: ヘッダー行をスクロール時に固定 */
+    thead th {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: #3d6e0a;
+      color: white;
+    }
     /* レーダーチャートグリッド: スマホ1列 / PC3列 */
     .radar-grid {
       display: grid;
@@ -468,7 +476,7 @@
 
                 {/* セルフケアのポイント */}
                 <h3 style={{...S.sec,marginTop:20,marginBottom:6}}>
-                  🌿 セルフケアのポイント（こころの耳より）
+                  🌿 セルフケアのポイント
                 </h3>
                 {/* 繋ぎの文 */}
                 <p style={{fontSize:12,color:'#475569',marginBottom:12,lineHeight:1.8,

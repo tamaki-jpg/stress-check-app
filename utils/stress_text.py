@@ -205,11 +205,11 @@ def _a_summary(sumA, a_problems):
             'ご自身のペースで良好な状態が保たれていますので、今の働き方を継続してください。'
         )
     elif sumA >= 23:
-        base = '仕事の負荷は中程度であり、概ね通常の範囲内です。'
+        base = '仕事の負荷は中程度です。'
         if a_problems:
             labels = '・'.join(p['label'] for p in a_problems)
             base += f'ただし「{labels}」については引き続き注意が必要です。'
-        return 'mid', f'{sumA} 点　おおむね普通', base
+        return 'mid', f'{sumA} 点　中程度', base
     else:
         base = '仕事の負荷が高くなっています。無理をしすぎず、早めに対処することが大切です。'
         if a_problems:
@@ -228,7 +228,7 @@ def _b_summary(sumB, b_problems, is_high_stress):
             text += '　なお高ストレス者判定に該当しているため、産業医への面接指導もご検討ください。'
         return 'good', f'{sumB} 点　良好', text
     elif sumB >= 18:
-        base = '心身のストレス反応は中程度であり、概ね適正な範囲内です。'
+        base = '心身のストレス反応は中程度です。'
         if b_problems:
             labels = '・'.join(p['label'] for p in b_problems)
             base += f'「{labels}」については意識的にセルフケアを行いましょう。'
@@ -258,13 +258,13 @@ def _c_summary(sumC, c_problems):
             '今後も職場やご家族との良好なコミュニケーションを大切にしてください。'
         )
     elif sumC >= 7:
-        base = '周囲からのサポートは概ね標準的です。'
+        base = '周囲からのサポートは中程度です。'
         if c_problems:
             parts = '・'.join(p['label'] for p in c_problems)
             base += f'「{parts}」については、困ったときに遠慮なく相談してみましょう。'
         else:
             base += '困ったことがあれば、遠慮なく周囲に声をかけてみましょう。'
-        return 'mid', f'{sumC} 点　おおむね普通', base
+        return 'mid', f'{sumC} 点　中程度', base
     else:
         base = '周囲からのサポートが不足している状態です。社内外の相談窓口の積極的な活用をご検討ください。'
         if c_problems:
@@ -379,7 +379,7 @@ def _build_selfcare(ep, sumA, is_high_stress):
 # メイン関数
 # ─────────────────────────────────────────────────────────────────────────────
 
-def generate_advice(ep, sumA, sumB, sumC, is_high_stress):
+def generate_advice(ep, sumA, sumB, sumC, is_high_stress, name=''):
     """
     Parameters
     ----------
@@ -388,6 +388,7 @@ def generate_advice(ep, sumA, sumB, sumC, is_high_stress):
     sumB          : int   B領域ep合計 (6-30)
     sumC          : int   C領域ep合計 (3-15, D1除外)
     is_high_stress: bool  高ストレス判定
+    name          : str   受検者の氏名（セルフケア導入文に挿入）
 
     Returns
     -------
@@ -446,18 +447,16 @@ def generate_advice(ep, sumA, sumB, sumC, is_high_stress):
     # ── セルフケア ────────────────────────────────────────────────────────
     selfcare = _build_selfcare(ep, sumA, is_high_stress)
 
-    # 繋ぎの文
+    # 繋ぎの文（受検者の氏名を動的に挿入）
+    name_part = f'{name} さん' if name else 'あなた'
     if any_problems:
-        all_labels = [p['label'] for p in (a_problems + b_problems + c_problems)]
-        label_str  = '・'.join(all_labels[:3])
-        suffix     = '等' if len(all_labels) > 3 else ''
         selfcare_intro = (
-            f'上記で挙げた「{label_str}{suffix}」のサインに対して、'
+            f'上記で挙げた {name_part} のストレスのサインに対して、'
             '以下のセルフケアを参考にしてみてください。'
         )
     else:
         selfcare_intro = (
-            '現在特に問題は見当たりませんが、'
+            f'{name_part} の現在の状態に特に問題は見当たりませんが、'
             '良好な状態を維持するために以下を継続してください。'
         )
 
