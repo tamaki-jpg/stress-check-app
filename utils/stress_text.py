@@ -15,7 +15,29 @@ stress_text.py
 """
 
 # ─────────────────────────────────────────────────────────────────────────────
-# 各尺度：ラベル + ep<=2 時の個別アドバイス文
+# ヘルススコア変換（全軸で 1=最悪, 5=最良 に統一）
+# ─────────────────────────────────────────────────────────────────────────────
+
+# STAR軸（★）: 高ep=良好 → ep をそのまま健康スコアとして使う
+# 非STAR軸（非★）: 高ep=悪い → 6-ep に変換して「高スコア=良好」に揃える
+_STAR_KEYS = frozenset({
+    'A6_control', 'A7_skill', 'A8_suitability', 'A9_reward',
+    'B1_vigor',
+    'C1_boss', 'C2_coworker', 'C3_family', 'D1_satisfaction',
+})
+
+def _health(key, ep_val):
+    """
+    全軸で 1=最悪, 5=最良 に正規化したヘルススコアを返す。
+    STAR軸: ep をそのまま返す
+    非STAR軸: 6 - ep を返す（A1-A5負担系, B2-B6症状系）
+    health <= 2 を「問題あり（ストレスのサインあり）」として使う。
+    """
+    return ep_val if key in _STAR_KEYS else (6 - ep_val)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 各尺度：ラベル + ヘルススコア<=2 時の個別アドバイス文
 # ─────────────────────────────────────────────────────────────────────────────
 
 _A_ITEMS = {
@@ -178,7 +200,7 @@ _C_ITEMS = {
 
 def _a_summary(sumA, a_problems):
     if sumA >= 35:
-        return 'good', f'合計 {sumA} 点 ─ 良好', (
+        return 'good', f'{sumA} 点　良好', (
             '仕事のストレス要因について、現在のところ適正な範囲内です。'
             'ご自身のペースで良好な状態が保たれていますので、今の働き方を継続してください。'
         )
@@ -187,13 +209,13 @@ def _a_summary(sumA, a_problems):
         if a_problems:
             labels = '・'.join(p['label'] for p in a_problems)
             base += f'ただし「{labels}」については引き続き注意が必要です。'
-        return 'mid', f'合計 {sumA} 点 ─ 概ね普通', base
+        return 'mid', f'{sumA} 点　おおむね普通', base
     else:
         base = '仕事の負荷が高くなっています。無理をしすぎず、早めに対処することが大切です。'
         if a_problems:
             labels = '・'.join(p['label'] for p in a_problems)
             base += f'特に「{labels}」の点で強いストレスが見られます。'
-        return 'high', f'合計 {sumA} 点 ─ 要注意', base
+        return 'high', f'{sumA} 点　高負荷', base
 
 
 def _b_summary(sumB, b_problems, is_high_stress):
@@ -204,7 +226,7 @@ def _b_summary(sumB, b_problems, is_high_stress):
         )
         if is_high_stress:
             text += '　なお高ストレス者判定に該当しているため、産業医への面接指導もご検討ください。'
-        return 'good', f'合計 {sumB} 点 ─ 良好', text
+        return 'good', f'{sumB} 点　良好', text
     elif sumB >= 18:
         base = '心身のストレス反応は中程度であり、概ね適正な範囲内です。'
         if b_problems:
@@ -212,26 +234,26 @@ def _b_summary(sumB, b_problems, is_high_stress):
             base += f'「{labels}」については意識的にセルフケアを行いましょう。'
         if is_high_stress:
             base += '産業医への面接指導もあわせてご検討ください。'
-        return 'mid', f'合計 {sumB} 点 ─ 中程度', base
+        return 'mid', f'{sumB} 点　中程度', base
     elif sumB >= 13:
-        base = '心身のストレス反応が高めの状態です（要注意）。十分な休息と気分転換を心がけてください。'
+        base = '心身のストレス反応が高めの状態です。十分な休息と気分転換を心がけてください。'
         if b_problems:
             labels = '・'.join(p['label'] for p in b_problems)
             base += f'「{labels}」の傾向がみられます。'
         if is_high_stress:
             base += '産業医への面接指導を積極的にご検討ください。'
-        return 'high', f'合計 {sumB} 点 ─ 要注意', base
+        return 'high', f'{sumB} 点　高い', base
     else:
-        base = '心身のストレス反応が著しく高い状態です（高ストレス判定の条件に相当）。早急に休息を確保し、産業医への相談を強くお勧めします。'
+        base = '心身のストレス反応が著しく高い状態です。早急に休息を確保し、産業医への相談を強くお勧めします。'
         if b_problems:
             labels = '・'.join(p['label'] for p in b_problems)
             base += f'特に「{labels}」が顕著にみられます。'
-        return 'very_high', f'合計 {sumB} 点 ─ 著しく高い', base
+        return 'very_high', f'{sumB} 点　著しく高い', base
 
 
 def _c_summary(sumC, c_problems):
     if sumC >= 12:
-        return 'good', f'合計 {sumC} 点 ─ 充実', (
+        return 'good', f'{sumC} 点　充実', (
             '周囲からのサポート体制は十分に充実しています。'
             '今後も職場やご家族との良好なコミュニケーションを大切にしてください。'
         )
@@ -242,13 +264,13 @@ def _c_summary(sumC, c_problems):
             base += f'「{parts}」については、困ったときに遠慮なく相談してみましょう。'
         else:
             base += '困ったことがあれば、遠慮なく周囲に声をかけてみましょう。'
-        return 'mid', f'合計 {sumC} 点 ─ 概ね普通', base
+        return 'mid', f'{sumC} 点　おおむね普通', base
     else:
         base = '周囲からのサポートが不足している状態です。社内外の相談窓口の積極的な活用をご検討ください。'
         if c_problems:
             parts = '・'.join(p['label'] for p in c_problems)
             base += f'特に「{parts}」でサポートが低い傾向にあります。'
-        return 'low', f'合計 {sumC} 点 ─ 不足', base
+        return 'low', f'{sumC} 点　サポート不足', base
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -316,17 +338,20 @@ _SELFCARE_CATALOG = {
 
 
 def _build_selfcare(ep, sumA, is_high_stress):
-    vigor      = ep.get('B1_vigor', 3)
-    fatigue    = ep.get('B3_fatigue', 3)
-    depression = ep.get('B5_depression', 3)
-    irritation = ep.get('B2_irritation', 3)
-    anxiety    = ep.get('B4_anxiety', 3)
-    physical   = ep.get('B6_physical', 3)
-    control    = ep.get('A6_control', 3)
-    a1_qty     = ep.get('A1_quantity', 3)
-    c_boss     = ep.get('C1_boss', 3)
-    c_coworker = ep.get('C2_coworker', 3)
-    c_family   = ep.get('C3_family', 3)
+    # ヘルススコア（1=最悪, 5=最良）で統一して評価
+    def h(k): return _health(k, ep.get(k, 3))
+
+    vigor      = h('B1_vigor')       # STAR: ep直接
+    fatigue    = h('B3_fatigue')     # 非STAR: 6-ep
+    depression = h('B5_depression')  # 非STAR: 6-ep
+    irritation = h('B2_irritation')  # 非STAR: 6-ep
+    anxiety    = h('B4_anxiety')     # 非STAR: 6-ep
+    physical   = h('B6_physical')    # 非STAR: 6-ep
+    control    = h('A6_control')     # STAR: ep直接
+    a1_qty     = h('A1_quantity')    # 非STAR: 6-ep
+    c_boss     = h('C1_boss')        # STAR: ep直接
+    c_coworker = h('C2_coworker')    # STAR: ep直接
+    c_family   = h('C3_family')      # STAR: ep直接
 
     keys = []
     if fatigue <= 2 or vigor <= 2 or physical <= 2:
@@ -376,18 +401,20 @@ def generate_advice(ep, sumA, sumB, sumC, is_high_stress):
       selfcare      : [{key, icon, title, items}]
     """
 
-    # ── 各領域 ep<=2 の問題項目を抽出 ──────────────────────────────────────
+    # ── 問題項目を抽出（ヘルススコア <= 2 が問題あり）──────────────────────
+    # health(key, ep) = ep if STAR else (6-ep) → 1=最悪, 5=最良
+    # STAR非★の方向を正しく反映: 非★は ep高=悪→health低、★は ep低=悪→health低
     a_problems = [
         {'label': v['label'], 'detail': v['detail']}
-        for k, v in _A_ITEMS.items() if ep.get(k, 3) <= 2
+        for k, v in _A_ITEMS.items() if _health(k, ep.get(k, 3)) <= 2
     ]
     b_problems = [
         {'label': v['label'], 'detail': v['detail']}
-        for k, v in _B_ITEMS.items() if ep.get(k, 3) <= 2
+        for k, v in _B_ITEMS.items() if _health(k, ep.get(k, 3)) <= 2
     ]
     c_problems = [
         {'label': v['label'], 'detail': v['detail']}
-        for k, v in _C_ITEMS.items() if ep.get(k, 3) <= 2
+        for k, v in _C_ITEMS.items() if _health(k, ep.get(k, 3)) <= 2
     ]
 
     # ── 合計点 → レベル + summary_text ─────────────────────────────────────
