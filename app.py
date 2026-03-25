@@ -47,6 +47,22 @@ if USE_FIRESTORE:
     from google.cloud import firestore as _fs
     _fdb = _fs.Client()
 
+    @_fs.transactional
+    def _txn_save_response(transaction, counter_ref, doc_ref, doc_data):
+        """
+        Firestoreトランザクション内で:
+          1. metadata/counters の last_employee_id を +1 して取得（連番採番）
+          2. responses コレクションに employee_id 付きでドキュメントを保存
+        """
+        snap = counter_ref.get(transaction=transaction)
+        new_id = (snap.get('last_employee_id') + 1) if snap.exists else 1
+        if snap.exists:
+            transaction.update(counter_ref, {'last_employee_id': new_id})
+        else:
+            transaction.set(counter_ref, {'last_employee_id': new_id})
+        transaction.set(doc_ref, {**doc_data, 'employee_id': str(new_id)})
+        return str(new_id)
+
 # ── ストレージ抽象化関数 ─────────────────────────────────────────────────────
 
 def _db_save_response(name, workplace_name, email, is_high_stress, answers_json) -> str:
@@ -57,11 +73,12 @@ def _db_save_response(name, workplace_name, email, is_high_stress, answers_json)
             'name': name, 'workplace_name': workplace_name or '',
             'email': email, 'is_high_stress': bool(is_high_stress),
             'answers_json': answers_json, 'created_at': jst_now,
-            'employee_id': '',
         }
-        _, doc_ref = _fdb.collection('responses').add(doc_data)
-        doc_ref.update({'employee_id': doc_ref.id})
-        return doc_ref.id
+        counter_ref = _fdb.collection('metadata').document('counters')
+        new_doc_ref = _fdb.collection('responses').document()
+        # トランザクションで連番採番 + 保存を原子的に実行
+        _txn_save_response(_fdb.transaction(), counter_ref, new_doc_ref, doc_data)
+        return new_doc_ref.id
     else:
         conn = get_db_connection()
         cursor = conn.execute(
