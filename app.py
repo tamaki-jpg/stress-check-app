@@ -4,6 +4,33 @@ import sqlite3
 import datetime
 import io
 import csv
+try:
+    from zoneinfo import ZoneInfo          # Python 3.9+
+except ImportError:
+    from backports.zoneinfo import ZoneInfo  # Python 3.8 fallback
+
+JST = ZoneInfo('Asia/Tokyo')
+
+def now_jst() -> datetime.datetime:
+    """現在の日本時間（JST）を返す。"""
+    return datetime.datetime.now(tz=JST)
+
+def utc_str_to_jst_str(utc_str: str) -> str:
+    """
+    SQLite の CURRENT_TIMESTAMP 形式（'YYYY-MM-DD HH:MM:SS'、UTC）を
+    JST の同形式文字列に変換する。
+    すでに JST で保存済みの値はそのまま返す。
+    """
+    if not utc_str:
+        return utc_str
+    try:
+        # SQLite は TZ なし文字列で UTC を返す
+        dt_utc = datetime.datetime.fromisoformat(utc_str).replace(
+            tzinfo=datetime.timezone.utc
+        )
+        return dt_utc.astimezone(JST).strftime('%Y-%m-%d %H:%M:%S')
+    except ValueError:
+        return utc_str
 import openpyxl
 from utils.stress_text import generate_advice
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
@@ -297,9 +324,10 @@ def show_result():
     # フロント React 用に q1〜q57 の生回答だけ抽出
     raw_answers = {f'q{i}': int(submitted.get(f'q{i}', 3)) for i in range(1, 58)}
 
-    # 保存日時を exam_date として使用
+    # 保存日時を JST の exam_date として使用
     created_at = row['created_at'] or ''
-    exam_date = created_at[:10] if created_at else datetime.datetime.now().strftime('%Y-%m-%d')
+    jst_created = utc_str_to_jst_str(created_at)
+    exam_date = jst_created[:10] if jst_created else now_jst().strftime('%Y-%m-%d')
 
     return render_template('result.html',
         employee_id   = row['employee_id'],
@@ -329,17 +357,20 @@ def submit_data():
     analysis = analyze_stress(data)
 
     # 2. データベース(SQLite)に保存（employee_idは自動採番）
+    # created_at は JST の現在時刻を明示的に保存（CURRENT_TIMESTAMP はUTCのため）
+    jst_now = now_jst().strftime('%Y-%m-%d %H:%M:%S')
     conn = get_db_connection()
     cursor = conn.execute('''
-        INSERT INTO responses (employee_id, name, workplace_name, email, is_high_stress, answers_json)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO responses (employee_id, name, workplace_name, email, is_high_stress, answers_json, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
     ''', (
         '',  # 仮で空にしてINSERT後に採番
         data.get('name', ''),
         data.get('workplace_name', ''),
         data.get('email', '') or None,  # 空文字はNULLとして保存
         analysis['is_high_stress'],
-        json.dumps(data, ensure_ascii=False)
+        json.dumps(data, ensure_ascii=False),
+        jst_now,  # JST で保存
     ))
     row_id = cursor.lastrowid
     # 挿入されたDBのIDをそのままemployee_idとして設定（1, 2, 3...の連番）
@@ -402,7 +433,7 @@ def get_responses():
             'workplace_code': ans.get('workplace_code', ''),
             'workplace_name': r['workplace_name'],
             'is_high_stress': r['is_high_stress'],
-            'submitted_at': r['created_at']
+            'submitted_at': utc_str_to_jst_str(r['created_at'])
         })
         
     return jsonify(results)
