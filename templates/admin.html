@@ -107,6 +107,12 @@
           <input type="text" id="company_name" placeholder="例：株式会社〇〇" />
         </div>
         <div class="form-group">
+          <label>会社コード（アルファベット2文字・社員IDの先頭に付きます）</label>
+          <input type="text" id="company_code" placeholder="例：BK" maxlength="2"
+            style="text-transform:uppercase; letter-spacing:0.1em;"
+            oninput="this.value=this.value.toUpperCase().replace(/[^A-Z]/g,'')" />
+        </div>
+        <div class="form-group">
           <label>実施期間</label>
           <div class="date-range">
             <input type="date" id="period_start" />
@@ -224,6 +230,7 @@
         if (res.ok) {
           const data = await res.json();
           document.getElementById('company_name').value = data.company_name || '';
+          document.getElementById('company_code').value = data.company_code || '';
           const period = data.implementation_period || '';
           if (period.includes(' 〜 ')) {
             const parts = period.split(' 〜 ');
@@ -241,7 +248,9 @@
       const pStart = document.getElementById('period_start').value;
       const pEnd = document.getElementById('period_end').value;
       const periodStr = (pStart || pEnd) ? `${pStart} 〜 ${pEnd}` : "";
-      const payload = { company_name: document.getElementById('company_name').value, implementation_period: periodStr, practitioner_name: document.getElementById('practitioner_name').value, practitioner_role: document.getElementById('practitioner_role').value };
+      const rawCode = document.getElementById('company_code').value.trim().toUpperCase().replace(/[^A-Z]/g, '');
+      if (rawCode && rawCode.length !== 2) { alert('会社コードはアルファベット2文字で入力してください（例：BK）'); return; }
+      const payload = { company_name: document.getElementById('company_name').value, company_code: rawCode, implementation_period: periodStr, practitioner_name: document.getElementById('practitioner_name').value, practitioner_role: document.getElementById('practitioner_role').value };
       try {
         const res = await fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
         if (res.ok) { showToast('✅ 設定を保存しました'); closeSettingsModal(); }
