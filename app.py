@@ -36,6 +36,169 @@ from utils.stress_text import generate_advice
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, make_response
 
+# ==========================================
+# ストレージバックエンド切り替え
+# USE_FIRESTORE=1 → Cloud Firestore（本番）
+# USE_FIRESTORE=0 / 未設定 → SQLite（ローカル開発）
+# ==========================================
+USE_FIRESTORE = os.environ.get('USE_FIRESTORE', '0') == '1'
+
+if USE_FIRESTORE:
+    from google.cloud import firestore as _fs
+    _fdb = _fs.Client()
+
+# ── ストレージ抽象化関数 ─────────────────────────────────────────────────────
+
+def _db_save_response(name, workplace_name, email, is_high_stress, answers_json) -> str:
+    """回答を保存して doc_id（文字列）を返す。"""
+    jst_now = now_jst().strftime('%Y-%m-%d %H:%M:%S')
+    if USE_FIRESTORE:
+        doc_data = {
+            'name': name, 'workplace_name': workplace_name or '',
+            'email': email, 'is_high_stress': bool(is_high_stress),
+            'answers_json': answers_json, 'created_at': jst_now,
+            'employee_id': '',
+        }
+        _, doc_ref = _fdb.collection('responses').add(doc_data)
+        doc_ref.update({'employee_id': doc_ref.id})
+        return doc_ref.id
+    else:
+        conn = get_db_connection()
+        cursor = conn.execute(
+            'INSERT INTO responses (employee_id,name,workplace_name,email,is_high_stress,answers_json,created_at) VALUES (?,?,?,?,?,?,?)',
+            ('', name, workplace_name, email, is_high_stress, answers_json, jst_now)
+        )
+        row_id = cursor.lastrowid
+        conn.execute('UPDATE responses SET employee_id=? WHERE id=?', (str(row_id), row_id))
+        conn.commit()
+        conn.close()
+        return str(row_id)
+
+def _db_get_response(doc_id: str) -> dict:
+    """doc_id に対応する回答を dict で返す。見つからなければ None。"""
+    if USE_FIRESTORE:
+        doc = _fdb.collection('responses').document(doc_id).get()
+        if not doc.exists:
+            return None
+        d = doc.to_dict()
+        d['id'] = doc.id
+        return d
+    else:
+        conn = get_db_connection()
+        try:
+            row = conn.execute('SELECT * FROM responses WHERE id=?', (int(doc_id),)).fetchone()
+        except (ValueError, TypeError):
+            row = None
+        conn.close()
+        return dict(row) if row else None
+
+def _db_list_responses() -> list:
+    """全回答を created_at 降順で返す（list of dict）。"""
+    if USE_FIRESTORE:
+        docs = _fdb.collection('responses').order_by(
+            'created_at', direction=_fs.Query.DESCENDING
+        ).stream()
+        result = []
+        for doc in docs:
+            d = doc.to_dict()
+            d['id'] = doc.id
+            result.append(d)
+        return result
+    else:
+        conn = get_db_connection()
+        rows = conn.execute('SELECT * FROM responses ORDER BY created_at DESC').fetchall()
+        conn.close()
+        result = []
+        for r in rows:
+            d = dict(r)
+            d['id'] = str(d['id'])  # Firestore と型を統一（文字列）
+            result.append(d)
+        return result
+
+def _db_get_setting(key, default='') -> str:
+    """設定値を取得する。"""
+    if USE_FIRESTORE:
+        doc = _fdb.collection('settings').document(key).get()
+        return doc.to_dict().get('value', default) if doc.exists else default
+    else:
+        conn = get_db_connection()
+        row = conn.execute('SELECT value FROM settings WHERE key=?', (key,)).fetchone()
+        conn.close()
+        return row['value'] if row else default
+
+def _db_list_settings() -> dict:
+    """全設定を dict で返す。"""
+    if USE_FIRESTORE:
+        docs = _fdb.collection('settings').stream()
+        return {doc.id: doc.to_dict().get('value', '') for doc in docs}
+    else:
+        conn = get_db_connection()
+        rows = conn.execute('SELECT key, value FROM settings').fetchall()
+        conn.close()
+        return {row['key']: row['value'] for row in rows}
+
+def _db_save_settings(settings_dict: dict):
+    """複数の設定をまとめて保存する。"""
+    if USE_FIRESTORE:
+        batch = _fdb.batch()
+        for key, value in settings_dict.items():
+            ref = _fdb.collection('settings').document(str(key))
+            batch.set(ref, {'value': str(value)})
+        batch.commit()
+    else:
+        conn = get_db_connection()
+        for key, value in settings_dict.items():
+            conn.execute('INSERT OR REPLACE INTO settings (key,value) VALUES (?,?)',
+                         (key, str(value)))
+        conn.commit()
+        conn.close()
+
+def _db_list_workplaces() -> list:
+    """全職場を code 昇順で返す（list of dict）。"""
+    if USE_FIRESTORE:
+        docs = _fdb.collection('workplaces').order_by('code').stream()
+        result = []
+        for doc in docs:
+            d = doc.to_dict()
+            d['id'] = doc.id
+            result.append(d)
+        return result
+    else:
+        conn = get_db_connection()
+        rows = conn.execute('SELECT * FROM workplaces ORDER BY code').fetchall()
+        conn.close()
+        return [dict(r) for r in rows]
+
+def _db_add_workplace(code, name, level) -> str:
+    """職場を追加して doc_id を返す。"""
+    if USE_FIRESTORE:
+        _, doc_ref = _fdb.collection('workplaces').add(
+            {'code': code, 'name': name, 'level': int(level)}
+        )
+        return doc_ref.id
+    else:
+        conn = get_db_connection()
+        cursor = conn.execute(
+            'INSERT INTO workplaces (code,name,level) VALUES (?,?,?)', (code, name, level)
+        )
+        wp_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        return str(wp_id)
+
+def _db_delete_workplace(doc_id: str):
+    """職場を削除する。"""
+    if USE_FIRESTORE:
+        _fdb.collection('workplaces').document(doc_id).delete()
+    else:
+        conn = get_db_connection()
+        try:
+            conn.execute('DELETE FROM workplaces WHERE id=?', (int(doc_id),))
+        except (ValueError, TypeError):
+            pass
+        conn.commit()
+        conn.close()
+
 app = Flask(__name__)
 # セッション（結果画面へのデータ受け渡し）を使うための暗号化キー
 app.secret_key = 'stress_check_super_secret_key'
@@ -156,10 +319,7 @@ def get_db_connection():
     return conn
 
 def get_setting(key, default=''):
-    conn = get_db_connection()
-    row = conn.execute('SELECT value FROM settings WHERE key = ?', (key,)).fetchone()
-    conn.close()
-    return row['value'] if row else default
+    return _db_get_setting(key, default)
 
 # ==========================================
 # ストレスチェック 判定 ＆ 詳細スコア計算ロジック
@@ -271,11 +431,7 @@ def analyze_stress(answers):
 @app.route('/')
 def index():
     # 従業員ページ：DBから職場一覧と設定を取得して渡す
-    conn = get_db_connection()
-    workplaces_db = conn.execute('SELECT * FROM workplaces ORDER BY code').fetchall()
-    conn.close()
-
-    workplaces = [dict(wp) for wp in workplaces_db]
+    workplaces = _db_list_workplaces()
     company_name      = get_setting('company_name', 'デモ企業')
     practitioner_name = get_setting('practitioner_name', '（未設定）')
     practitioner_role = get_setting('practitioner_role', '')
@@ -298,17 +454,13 @@ def show_result():
     URL パラメータ result_id で DB レコードを特定し、
     analyze_stress() を再実行してテンプレートに渡す。
     """
-    result_id = request.args.get('result_id', type=int)
+    # result_id は SQLite では数字文字列、Firestore では英数字文字列
+    result_id = request.args.get('result_id')
     if not result_id:
         return redirect(url_for('index'))
 
     # DB からレコードを1件取得
-    conn = get_db_connection()
-    row = conn.execute(
-        'SELECT * FROM responses WHERE id = ?', (result_id,)
-    ).fetchone()
-    conn.close()
-
+    row = _db_get_response(result_id)
     if not row:
         return redirect(url_for('index'))
 
@@ -324,17 +476,16 @@ def show_result():
     # フロント React 用に q1〜q57 の生回答だけ抽出
     raw_answers = {f'q{i}': int(submitted.get(f'q{i}', 3)) for i in range(1, 58)}
 
-    # 保存日時を JST の exam_date として使用
-    created_at = row['created_at'] or ''
-    jst_created = utc_str_to_jst_str(created_at)
-    exam_date = jst_created[:10] if jst_created else now_jst().strftime('%Y-%m-%d')
+    # 保存日時（JST で保存済み、念のため変換も通す）
+    created_at = row.get('created_at') or ''
+    exam_date = utc_str_to_jst_str(created_at)[:10] if created_at else now_jst().strftime('%Y-%m-%d')
 
     return render_template('result.html',
-        employee_id   = row['employee_id'],
-        name          = row['name'],
-        workplace_name= row['workplace_name'],
+        employee_id   = row.get('employee_id', result_id),
+        name          = row.get('name', ''),
+        workplace_name= row.get('workplace_name', ''),
         exam_date     = exam_date,
-        ref_number    = f"SC-{result_id:04d}",
+        ref_number    = f"SC-{result_id}",
         gender        = submitted.get('gender', ''),
         is_high_stress= analysis['is_high_stress'],
         radar_scores  = analysis['radar_scores'],
@@ -356,27 +507,14 @@ def submit_data():
     # 1. 高ストレス判定とスコア計算を実行
     analysis = analyze_stress(data)
 
-    # 2. データベース(SQLite)に保存（employee_idは自動採番）
-    # created_at は JST の現在時刻を明示的に保存（CURRENT_TIMESTAMP はUTCのため）
-    jst_now = now_jst().strftime('%Y-%m-%d %H:%M:%S')
-    conn = get_db_connection()
-    cursor = conn.execute('''
-        INSERT INTO responses (employee_id, name, workplace_name, email, is_high_stress, answers_json, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-    ''', (
-        '',  # 仮で空にしてINSERT後に採番
-        data.get('name', ''),
-        data.get('workplace_name', ''),
-        data.get('email', '') or None,  # 空文字はNULLとして保存
-        analysis['is_high_stress'],
-        json.dumps(data, ensure_ascii=False),
-        jst_now,  # JST で保存
-    ))
-    row_id = cursor.lastrowid
-    # 挿入されたDBのIDをそのままemployee_idとして設定（1, 2, 3...の連番）
-    conn.execute('UPDATE responses SET employee_id = ? WHERE id = ?', (str(row_id), row_id))
-    conn.commit()
-    conn.close()
+    # 2. データベースに保存（SQLite or Firestore）
+    row_id = _db_save_response(
+        name           = data.get('name', ''),
+        workplace_name = data.get('workplace_name', ''),
+        email          = data.get('email', '') or None,
+        is_high_stress = analysis['is_high_stress'],
+        answers_json   = json.dumps(data, ensure_ascii=False),
+    )
 
     # 3. フロントエンドにリダイレクト先を返す
     # セッションは使用しない（クッキーサイズ上限問題を回避）。
@@ -386,82 +524,55 @@ def submit_data():
 # ----------------- 職場管理API -----------------
 @app.route('/api/workplaces', methods=['GET', 'POST'])
 def manage_workplaces():
-    conn = get_db_connection()
     if request.method == 'POST':
         data = request.json
-        conn.execute('INSERT INTO workplaces (code, name, level) VALUES (?, ?, ?)',
-                     (data['code'], data['name'], data['level']))
-        conn.commit()
-        conn.close()
+        _db_add_workplace(data['code'], data['name'], data['level'])
         return jsonify({'success': True})
-    else:
-        workplaces = conn.execute('SELECT * FROM workplaces ORDER BY code').fetchall()
-        conn.close()
-        return jsonify([dict(wp) for wp in workplaces])
+    return jsonify(_db_list_workplaces())
 
-@app.route('/api/workplaces/<int:id>', methods=['DELETE'])
-def delete_workplace(id):
-    conn = get_db_connection()
-    conn.execute('DELETE FROM workplaces WHERE id = ?', (id,))
-    conn.commit()
-    conn.close()
+@app.route('/api/workplaces/<doc_id>', methods=['DELETE'])
+def delete_workplace(doc_id):
+    _db_delete_workplace(doc_id)
     return jsonify({'success': True})
 
-# ----------------- 結果一覧取得API（管理者画面用） ----------------- 
-@app.route('/api/responses') 
-def get_responses(): 
-    conn = get_db_connection() 
-    rows = conn.execute('SELECT * FROM responses ORDER BY created_at DESC').fetchall() 
-    conn.close() 
-    
+# ----------------- 結果一覧取得API（管理者画面用） -----------------
+@app.route('/api/responses')
+def get_responses():
+    rows = _db_list_responses()
     results = []
     for r in rows:
-        # DBに保存されている詳細データ（JSON）を読み解く
         try:
-            ans = json.loads(r['answers_json'])
-        except:
+            ans = json.loads(r.get('answers_json') or '{}')
+        except Exception:
             ans = {}
-            
-        # admin.htmlが求めている名前（キー）にピッタリ合わせてデータを渡す
+        # created_at は JST で保存済み。念のため変換も通す
+        submitted_at = utc_str_to_jst_str(r.get('created_at') or '')
         results.append({
-            'id': r['id'],
-            'employee_id': r['employee_id'],
-            'name': r['name'],
-            'furigana': ans.get('furigana', ''),
-            'birth_date': ans.get('birth_date', ''),
-            'gender': ans.get('gender', ''),
+            'id':             r.get('id'),
+            'employee_id':    r.get('employee_id', ''),
+            'name':           r.get('name', ''),
+            'furigana':       ans.get('furigana', ''),
+            'birth_date':     ans.get('birth_date', ''),
+            'gender':         ans.get('gender', ''),
             'workplace_code': ans.get('workplace_code', ''),
-            'workplace_name': r['workplace_name'],
-            'is_high_stress': r['is_high_stress'],
-            'submitted_at': utc_str_to_jst_str(r['created_at'])
+            'workplace_name': r.get('workplace_name', ''),
+            'is_high_stress': r.get('is_high_stress', False),
+            'submitted_at':   submitted_at,
         })
-        
     return jsonify(results)
 
 # ----------------- 設定管理API（管理画面の実施者管理と連動） -----------------
 @app.route('/api/settings', methods=['GET', 'POST'])
 def manage_settings():
-    conn = get_db_connection()
     if request.method == 'POST':
-        data = request.json or {}
-        for key, value in data.items():
-            conn.execute(
-                'INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)',
-                (key, str(value))
-            )
-        conn.commit()
-        conn.close()
+        _db_save_settings(request.json or {})
         return jsonify({'success': True})
-    rows = conn.execute('SELECT key, value FROM settings').fetchall()
-    conn.close()
-    return jsonify({row['key']: row['value'] for row in rows})
+    return jsonify(_db_list_settings())
 
 # ----------------- Excel出力API（職場データ・取込用フォーマット） -----------------
 @app.route('/api/csv/workplaces')
 def export_workplaces_csv():
-    conn = get_db_connection()
-    workplaces = conn.execute('SELECT code, name, level FROM workplaces ORDER BY code').fetchall()
-    conn.close()
+    workplaces = _db_list_workplaces()
 
     wb = openpyxl.Workbook()
     ws = wb.active
@@ -496,14 +607,14 @@ def export_workplaces_csv():
     data_align = Alignment(vertical='center')
 
     for row_idx, wp in enumerate(workplaces, start=2):
-        level = int(wp['level']) if wp['level'] else 1
+        level = int(wp.get('level') or 1)
         # 13列分の空行を作成し、職場コードと該当する第N職場名だけ埋める
         row_data = [''] * 13
-        row_data[0] = str(wp['code'])          # A: 職場コード
-        row_data[1] = ''                        # B: 前回職場コード（空）
-        name_col = 1 + level                    # C=第1(level1), D=第2(level2)...
+        row_data[0] = str(wp.get('code', ''))   # A: 職場コード
+        row_data[1] = ''                         # B: 前回職場コード（空）
+        name_col = 1 + level                     # C=第1(level1), D=第2(level2)...
         if 2 <= name_col <= 11:
-            row_data[name_col] = wp['name']     # 第N職場名
+            row_data[name_col] = wp.get('name', '')  # 第N職場名
         row_data[12] = ''                       # M: 初回パスワード（空）
 
         for col_idx, val in enumerate(row_data, start=1):
@@ -532,9 +643,7 @@ def export_workplaces_csv():
 # ----------------- CSV出力API（回答データ・指定フォーマット版） -----------------
 @app.route('/api/csv')
 def export_results_csv():
-    conn = get_db_connection()
-    responses = conn.execute('SELECT * FROM responses ORDER BY created_at DESC').fetchall()
-    conn.close()
+    responses = _db_list_responses()
 
     si = io.StringIO()
     cw = csv.writer(si)
@@ -554,20 +663,20 @@ def export_results_csv():
     # 2. データをフォーマットに当てはめる
     for r in responses:
         try:
-            ans = json.loads(r['answers_json'])
-        except:
+            ans = json.loads(r.get('answers_json') or '{}')
+        except Exception:
             ans = {}
-            
+
         row = [
-            r['name'],                      # 氏名
+            r.get('name', ''),              # 氏名
             ans.get('furigana', ''),        # フリガナ
             ans.get('birth_date', ''),      # 生年月日(西暦)
             ans.get('gender', ''),          # 性別
-            r['employee_id'],               # 社員ID
+            r.get('employee_id', ''),       # 社員ID
             ans.get('workplace_code', ''),  # 職場コード
-            r['workplace_name'],            # 職場名
+            r.get('workplace_name', ''),    # 職場名
             '',                             # 前回社員ID
-            r['email'] or '',               # メールアドレス
+            r.get('email') or '',           # メールアドレス
             '', '', '', '', ''              # 電話番号 〜 変数値までは空欄
         ]
         
