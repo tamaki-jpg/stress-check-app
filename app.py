@@ -493,9 +493,9 @@ def show_result():
     # フロント React 用に q1〜q57 の生回答だけ抽出
     raw_answers = {f'q{i}': int(submitted.get(f'q{i}', 3)) for i in range(1, 58)}
 
-    # 保存日時（JST で保存済み、念のため変換も通す）
+    # 保存日時（JST 文字列で保存済みのため変換不要）
     created_at = row.get('created_at') or ''
-    exam_date = utc_str_to_jst_str(created_at)[:10] if created_at else now_jst().strftime('%Y-%m-%d')
+    exam_date = created_at[:10] if created_at else now_jst().strftime('%Y-%m-%d')
 
     return render_template('result.html',
         employee_id   = row.get('employee_id', result_id),
@@ -562,8 +562,8 @@ def get_responses():
             ans = json.loads(r.get('answers_json') or '{}')
         except Exception:
             ans = {}
-        # created_at は JST で保存済み。念のため変換も通す
-        submitted_at = utc_str_to_jst_str(r.get('created_at') or '')
+        # created_at は JST 文字列で保存済みのため変換不要
+        submitted_at = r.get('created_at') or ''
         results.append({
             'id':             r.get('id'),
             'employee_id':    r.get('employee_id', ''),
