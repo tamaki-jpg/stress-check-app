@@ -286,24 +286,63 @@
     }
 
     // ── PDFダウンロード ───────────────────────────────────
-    function downloadPDF() {
+    // html2canvas は SVG をそのままキャプチャできないため、
+    // PDF生成前に全SVGをBase64画像(<img>)へ一時変換し、生成後に元に戻す。
+    async function downloadPDF() {
       const btn = document.getElementById('pdf-btn-bar');
       if (btn) btn.style.display = 'none';
       const el = document.getElementById('result-content');
+      const replacements = [];
+
+      // ① SVG → Base64 data URL 画像に一時差し替え
+      try {
+        const svgs = Array.from(el.querySelectorAll('svg'));
+        for (const svg of svgs) {
+          try {
+            const clone = svg.cloneNode(true);
+            clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+            clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
+            const svgStr = new XMLSerializer().serializeToString(clone);
+            const b64 = btoa(unescape(encodeURIComponent(svgStr)));
+            const dataUrl = 'data:image/svg+xml;base64,' + b64;
+            const rect = svg.getBoundingClientRect();
+            const img = document.createElement('img');
+            img.src = dataUrl;
+            img.style.cssText = `width:${rect.width}px;height:${rect.height}px;display:block;max-width:100%;`;
+            svg.parentNode.insertBefore(img, svg.nextSibling);
+            svg.style.display = 'none';
+            replacements.push({ svg, img });
+          } catch(e) { /* 変換失敗時はスキップして元のSVGを使用 */ }
+        }
+        // ② 画像ロード完了を待機
+        await Promise.all(replacements.map(({ img }) =>
+          new Promise(r => { img.onload = r; img.onerror = r; setTimeout(r, 800); })
+        ));
+      } catch(e) { /* SVG変換全体が失敗してもPDF生成は続行 */ }
+
       const filename = (meta.name || 'ストレスチェック') + 'さんのストレスチェック結果.pdf';
       const opt = {
         margin:     [8, 8, 8, 8],
         filename:   filename,
         image:      { type: 'jpeg', quality: 0.97 },
-        html2canvas:{ scale: 2, useCORS: true, allowTaint: true, logging: false },
+        html2canvas:{ scale: 2, useCORS: true, allowTaint: true, logging: false, removeContainer: true },
         jsPDF:      { unit: 'mm', format: 'a4', orientation: 'portrait' },
         pagebreak:  { mode: ['avoid-all', 'css', 'legacy'] },
       };
-      html2pdf().set(opt).from(el).save().then(() => {
+
+      // ③ PDF生成
+      try {
+        await html2pdf().set(opt).from(el).save();
+      } catch(e) {
+        console.error('PDF生成エラー:', e);
+      } finally {
+        // ④ SVGを元に戻す
+        for (const { svg, img } of replacements) {
+          svg.style.display = '';
+          img.remove();
+        }
         if (btn) btn.style.display = '';
-      }).catch(() => {
-        if (btn) btn.style.display = '';
-      });
+      }
     }
 
     // ── メインコンポーネント ──────────────────────────────
