@@ -286,57 +286,82 @@
     }
 
     // ── PDFダウンロード ───────────────────────────────────
-    // html2canvas は SVG をそのままキャプチャできないため、
-    // PDF生成前に全SVGをBase64画像(<img>)へ一時変換し、生成後に元に戻す。
+    // html2canvas は SVG を直接キャプチャできない。
+    // SVG → Blob URL → <Image> → Canvas（白背景）→ PNG data URL → <img> の
+    // 二段階ラスタライズで確実にキャプチャさせる。
     async function downloadPDF() {
       const btn = document.getElementById('pdf-btn-bar');
       if (btn) btn.style.display = 'none';
       const el = document.getElementById('result-content');
       const replacements = [];
 
-      // ① SVG → Base64 data URL 画像に一時差し替え
-      try {
-        const svgs = Array.from(el.querySelectorAll('svg'));
-        for (const svg of svgs) {
+      // ① SVG を Canvas 経由で PNG data URL に変換するヘルパー
+      function svgToPng(svg) {
+        return new Promise((resolve, reject) => {
           try {
             const clone = svg.cloneNode(true);
             clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
             clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
-            const svgStr = new XMLSerializer().serializeToString(clone);
-            const b64 = btoa(unescape(encodeURIComponent(svgStr)));
-            const dataUrl = 'data:image/svg+xml;base64,' + b64;
             const rect = svg.getBoundingClientRect();
+            const w = Math.ceil(rect.width)  || 320;
+            const h = Math.ceil(rect.height) || 300;
+            clone.setAttribute('width',  w);
+            clone.setAttribute('height', h);
+            const svgStr = new XMLSerializer().serializeToString(clone);
+            const blob   = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+            const url    = URL.createObjectURL(blob);
+            const tmpImg = new Image();
+            tmpImg.onload = () => {
+              URL.revokeObjectURL(url);
+              const cvs = document.createElement('canvas');
+              cvs.width  = w * 2;   // 2x 高解像度
+              cvs.height = h * 2;
+              const ctx  = cvs.getContext('2d');
+              ctx.fillStyle = '#ffffff';
+              ctx.fillRect(0, 0, cvs.width, cvs.height);
+              ctx.scale(2, 2);
+              ctx.drawImage(tmpImg, 0, 0, w, h);
+              resolve({ png: cvs.toDataURL('image/png'), w, h });
+            };
+            tmpImg.onerror = e => { URL.revokeObjectURL(url); reject(e); };
+            tmpImg.src = url;
+          } catch(e) { reject(e); }
+        });
+      }
+
+      // ② 全SVGを PNG <img> に差し替え
+      try {
+        const svgs = Array.from(el.querySelectorAll('svg'));
+        for (const svg of svgs) {
+          try {
+            const { png, w, h } = await svgToPng(svg);
             const img = document.createElement('img');
-            img.src = dataUrl;
-            img.style.cssText = `width:${rect.width}px;height:${rect.height}px;display:block;max-width:100%;`;
+            img.src = png;
+            img.style.cssText =
+              `width:${w}px;height:${h}px;display:block;max-width:100%;background:#fff;`;
             svg.parentNode.insertBefore(img, svg.nextSibling);
             svg.style.display = 'none';
             replacements.push({ svg, img });
-          } catch(e) { /* 変換失敗時はスキップして元のSVGを使用 */ }
+          } catch(e) { console.warn('SVG→PNG変換失敗（スキップ）:', e); }
         }
-        // ② 画像ロード完了を待機
-        await Promise.all(replacements.map(({ img }) =>
-          new Promise(r => { img.onload = r; img.onerror = r; setTimeout(r, 800); })
-        ));
-      } catch(e) { /* SVG変換全体が失敗してもPDF生成は続行 */ }
+      } catch(e) { /* 継続 */ }
 
+      // ③ PDF 生成
       const filename = (meta.name || 'ストレスチェック') + 'さんのストレスチェック結果.pdf';
       const opt = {
-        margin:     [8, 8, 8, 8],
-        filename:   filename,
-        image:      { type: 'jpeg', quality: 0.97 },
-        html2canvas:{ scale: 2, useCORS: true, allowTaint: true, logging: false, removeContainer: true },
-        jsPDF:      { unit: 'mm', format: 'a4', orientation: 'portrait' },
-        pagebreak:  { mode: ['avoid-all', 'css', 'legacy'] },
+        margin:      [8, 8, 8, 8],
+        filename:    filename,
+        image:       { type: 'jpeg', quality: 0.97 },
+        html2canvas: { scale: 2, useCORS: true, allowTaint: true, logging: false },
+        jsPDF:       { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak:   { mode: ['avoid-all', 'css', 'legacy'] },
       };
-
-      // ③ PDF生成
       try {
         await html2pdf().set(opt).from(el).save();
       } catch(e) {
         console.error('PDF生成エラー:', e);
       } finally {
-        // ④ SVGを元に戻す
+        // ④ SVG を復元
         for (const { svg, img } of replacements) {
           svg.style.display = '';
           img.remove();
