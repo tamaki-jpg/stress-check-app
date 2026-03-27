@@ -438,7 +438,7 @@
               <span style={S.icon}>⚠️</span>
               <div>
                 <div style={{...S.bHead,color:'#991b1b'}}>高ストレス者に該当します（面接指導の対象）</div>
-                <div style={{...S.bBody,fontWeight:600,color:'#7f1d1d',lineHeight:1.9}}>
+                <div style={{...S.bBody,fontWeight:600,color:'#7f1d1d',lineHeight:2.0,paddingBottom:4}}>
                   ストレスチェック結果におきまして、高ストレス者判定基準に該当していました。このような状態が続きますと大変心配ですので、<strong>医師による面接指導</strong>をお勧めします。希望される場合、結果を社内の担当者に開示の上、面接の準備を行います。ご不明な点がございましたら実施者または実施事務従事者までお問い合わせください。
                 </div>
               </div>
@@ -448,7 +448,7 @@
               <span style={S.icon}>✅</span>
               <div>
                 <div style={{...S.bHead,color:'#166534'}}>心身の健康面において特に問題はみられませんでした</div>
-                <div style={{...S.bBody,lineHeight:1.9}}>
+                <div style={{...S.bBody,lineHeight:2.0,paddingBottom:4}}>
                   ストレスチェック結果におきまして、心身の健康面において特に問題はみられませんでした。何かご心配なことなどございましたら社内外の相談窓口や産業医面談もご活用ください。これからもご自身の健康維持と職場環境の改善にご協力をお願いいたします。
                 </div>
               </div>
@@ -651,12 +651,12 @@
       mRow:      {display:'flex',gap:8,marginBottom:3,fontSize:12,color:'white'},
       mL:        {opacity:0.72,minWidth:52,flexShrink:0},
       mV:        {fontWeight:600},
-      banner:    {display:'flex',alignItems:'flex-start',gap:14,padding:'14px 18px',borderRadius:10,marginBottom:20,borderWidth:1,borderStyle:'solid'},
+      banner:    {display:'flex',alignItems:'flex-start',gap:14,padding:'20px 24px',borderRadius:10,marginBottom:20,borderWidth:1,borderStyle:'solid',overflow:'visible'},
       bannerRed: {background:'#fef2f2',borderColor:'#fca5a5'},
       bannerGreen:{background:'#f0fdf4',borderColor:'#86efac'},
       icon:      {fontSize:24,flexShrink:0,marginTop:1},
-      bHead:     {fontSize:15,fontWeight:700,marginBottom:3},
-      bBody:     {fontSize:12,color:'#374151',lineHeight:1.7},
+      bHead:     {fontSize:15,fontWeight:700,marginBottom:6},
+      bBody:     {fontSize:12,color:'#374151',lineHeight:2.0},
       charts:        {},  /* CSSクラス radar-grid に移行 */
       chartCard:     {background:'white',borderRadius:10,padding:'14px 6px 8px',boxShadow:'0 2px 8px rgba(0,0,0,0.07)'},
       chartTitle:    {fontSize:12,fontWeight:700,textAlign:'center',marginBottom:2},
