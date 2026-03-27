@@ -495,9 +495,6 @@
                 <tr><td colSpan={6} style={S.totalRow}>合計（総合計）<span style={{...S.total, fontSize:15, color:'white'}}>{sumA + sumB + sumC} 点</span></td></tr>
               </tbody>
             </table>
-            <div style={S.note}>
-              高ストレス者の判定は厚生労働省方式（素点換算表を用いた評価基準 その2）を採用。仕事や生活の満足度（D1）は高ストレス判定に含みません。
-            </div>
           </div>
 
           {/* ── 個別アドバイスセクション ── */}
@@ -676,12 +673,12 @@
       sec:       {fontSize:14,fontWeight:700,color:'#3d6e0a',marginBottom:8,paddingBottom:5,borderBottom:'2px solid #8cc030'},
       hint:      {fontSize:11,color:'#6b7280',marginBottom:10},
       tbl:       {width:'100%',borderCollapse:'collapse',fontSize:12},
-      th:        {padding:'8px 6px',fontWeight:600,fontSize:11,textAlign:'center'},
+      th:        {padding:'5px 4px',fontWeight:600,fontSize:11,textAlign:'center'},
       epLabel:   {padding:'7px 10px',borderBottom:'1px solid #f3f4f6',fontSize:12,color:'#374151'},
-      epCell:    {padding:'7px 4px',borderBottom:'1px solid #f3f4f6',textAlign:'center',width:'9%'},
-      secRow:    {padding:'8px 10px',background:'#f0f4e8',fontWeight:700,fontSize:12,color:'#3d6e0a'},
+      epCell:    {padding:'4px 3px',borderBottom:'1px solid #f3f4f6',textAlign:'center',width:'9%'},
+      secRow:    {padding:'5px 8px',background:'#f0f4e8',fontWeight:700,fontSize:12,color:'#3d6e0a'},
       total:     {float:'right',fontWeight:700,fontSize:13,color:'#1a4d00'},
-      totalRow:  {padding:'10px 12px',background:'#1a4d00',color:'white',fontWeight:700,fontSize:13},
+      totalRow:  {padding:'6px 10px',background:'#1a4d00',color:'white',fontWeight:700,fontSize:13},
       note:      {marginTop:10,padding:'7px 10px',background:'#f9fafb',borderRadius:6,fontSize:10,color:'#9ca3af',borderLeft:'3px solid #d1d5db'},
       cGrid:     {display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10},
       cItem:     {background:'#f9fafb',borderRadius:8,padding:'12px 14px',fontSize:12,color:'#374151',lineHeight:1.7},
