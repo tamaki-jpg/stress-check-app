@@ -48,20 +48,22 @@ if USE_FIRESTORE:
     _fdb = _fs.Client()
 
     @_fs.transactional
-    def _txn_save_response(transaction, counter_ref, doc_ref, doc_data):
+    def _txn_save_response(transaction, counter_ref, doc_ref, doc_data, company_code='ID'):
         """
         Firestoreトランザクション内で:
           1. metadata/counters の last_employee_id を +1 して取得（連番採番）
           2. responses コレクションに employee_id 付きでドキュメントを保存
+        employee_id は "{company_code}{連番}" 形式（例: BK1, BK2）。
         """
         snap = counter_ref.get(transaction=transaction)
-        new_id = (snap.get('last_employee_id') + 1) if snap.exists else 1
+        new_num = (snap.get('last_employee_id') + 1) if snap.exists else 1
         if snap.exists:
-            transaction.update(counter_ref, {'last_employee_id': new_id})
+            transaction.update(counter_ref, {'last_employee_id': new_num})
         else:
-            transaction.set(counter_ref, {'last_employee_id': new_id})
-        transaction.set(doc_ref, {**doc_data, 'employee_id': str(new_id)})
-        return str(new_id)
+            transaction.set(counter_ref, {'last_employee_id': new_num})
+        employee_id = f"{company_code}{new_num}"
+        transaction.set(doc_ref, {**doc_data, 'employee_id': employee_id})
+        return employee_id
 
 # ── ストレージ抽象化関数 ─────────────────────────────────────────────────────
 
@@ -69,6 +71,8 @@ def _db_save_response(name, workplace_name, email, is_high_stress, answers_json)
     """回答を保存して doc_id（文字列）を返す。"""
     jst_now = now_jst().strftime('%Y-%m-%d %H:%M:%S')
     if USE_FIRESTORE:
+        # 会社コードをトランザクション外で取得（例: 'BK'、未設定なら 'ID'）
+        company_code = _db_get_setting('company_code', 'ID') or 'ID'
         doc_data = {
             'name': name, 'workplace_name': workplace_name or '',
             'email': email, 'is_high_stress': bool(is_high_stress),
@@ -77,16 +81,19 @@ def _db_save_response(name, workplace_name, email, is_high_stress, answers_json)
         counter_ref = _fdb.collection('metadata').document('counters')
         new_doc_ref = _fdb.collection('responses').document()
         # トランザクションで連番採番 + 保存を原子的に実行
-        _txn_save_response(_fdb.transaction(), counter_ref, new_doc_ref, doc_data)
+        _txn_save_response(_fdb.transaction(), counter_ref, new_doc_ref, doc_data, company_code)
         return new_doc_ref.id
     else:
+        # SQLite モード: 会社コードを設定から取得
+        company_code = _db_get_setting('company_code', 'ID') or 'ID'
         conn = get_db_connection()
         cursor = conn.execute(
             'INSERT INTO responses (employee_id,name,workplace_name,email,is_high_stress,answers_json,created_at) VALUES (?,?,?,?,?,?,?)',
             ('', name, workplace_name, email, is_high_stress, answers_json, jst_now)
         )
         row_id = cursor.lastrowid
-        conn.execute('UPDATE responses SET employee_id=? WHERE id=?', (str(row_id), row_id))
+        employee_id = f"{company_code}{row_id}"
+        conn.execute('UPDATE responses SET employee_id=? WHERE id=?', (employee_id, row_id))
         conn.commit()
         conn.close()
         return str(row_id)
