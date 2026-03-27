@@ -8,6 +8,7 @@
   <script crossorigin src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Noto Sans JP', 'Helvetica Neue', sans-serif; background: #f2f5ee; }
@@ -309,9 +310,90 @@
       );
     }
 
-    // ── PDFダウンロード（ブラウザ印刷機能を使用）───────────
-    function downloadPDF() {
-      window.print();
+    // ── PDFダウンロード（html2pdf.js / SVG→Canvas変換）────
+    async function downloadPDF() {
+      const btn = document.getElementById('pdf-btn-bar');
+      if (btn) btn.style.display = 'none';
+      const el = document.getElementById('result-content');
+      const replacements = [];
+
+      // SVG を Canvas 経由で PNG data URL に変換
+      function svgToPng(svg) {
+        return new Promise((resolve, reject) => {
+          try {
+            const clone = svg.cloneNode(true);
+            clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+            clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
+            const rect = svg.getBoundingClientRect();
+            const w = Math.ceil(rect.width)  || 320;
+            const h = Math.ceil(rect.height) || 300;
+            clone.setAttribute('width',  w);
+            clone.setAttribute('height', h);
+            const svgStr = new XMLSerializer().serializeToString(clone);
+            const b64    = btoa(unescape(encodeURIComponent(svgStr)));
+            const dataUrl = 'data:image/svg+xml;base64,' + b64;
+            const tmpImg = new Image();
+            tmpImg.onload = () => {
+              const cvs = document.createElement('canvas');
+              cvs.width  = w * 2;
+              cvs.height = h * 2;
+              const ctx  = cvs.getContext('2d');
+              ctx.fillStyle = '#ffffff';
+              ctx.fillRect(0, 0, cvs.width, cvs.height);
+              ctx.scale(2, 2);
+              ctx.drawImage(tmpImg, 0, 0, w, h);
+              resolve({ png: cvs.toDataURL('image/png'), w, h });
+            };
+            tmpImg.onerror = reject;
+            tmpImg.src = dataUrl;
+          } catch(e) { reject(e); }
+        });
+      }
+
+      // 全 SVG を PNG img に差し替え
+      try {
+        for (const svg of Array.from(el.querySelectorAll('svg'))) {
+          try {
+            const { png, w, h } = await svgToPng(svg);
+            const img = document.createElement('img');
+            img.src = png;
+            img.style.cssText = `width:${w}px;height:${h}px;display:block;max-width:100%;background:#fff;`;
+            svg.parentNode.insertBefore(img, svg.nextSibling);
+            svg.style.display = 'none';
+            replacements.push({ svg, img });
+          } catch(e) { console.warn('SVG変換スキップ:', e); }
+        }
+      } catch(e) { /* 継続 */ }
+
+      const filename = (meta.name || 'ストレスチェック') + 'さんのストレスチェック結果.pdf';
+      const opt = {
+        margin:      [10, 10, 10, 10],
+        filename:    filename,
+        image:       { type: 'jpeg', quality: 0.95 },
+        html2canvas: {
+          scale:       2,
+          useCORS:     true,
+          allowTaint:  true,
+          logging:     false,
+          windowWidth: 1060,
+          scrollX:     0,
+          scrollY:     0,
+        },
+        jsPDF:       { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak:   { mode: ['css', 'legacy'], before: '.html2pdf__page-break' },
+      };
+
+      try {
+        await html2pdf().set(opt).from(el).save();
+      } catch(e) {
+        console.error('PDF生成エラー:', e);
+      } finally {
+        for (const { svg, img } of replacements) {
+          svg.style.display = '';
+          img.remove();
+        }
+        if (btn) btn.style.display = '';
+      }
     }
 
     // ── メインコンポーネント ──────────────────────────────
@@ -412,6 +494,8 @@
             <p style={S.chartGuideText}>グラフが外側に広がるほど良好な状態です。逆に、中心の赤いエリアに近づくほど、ストレスが蓄積しているサインとなります。</p>
           </div>
 
+          {/* 改ページ②：詳細スコア */}
+          <div className="html2pdf__page-break"></div>
           {/* 評価点テーブル */}
           <div style={S.card} className="print-page-break print-no-break">
             <h3 style={S.sec}>詳細スコア（評価点）</h3>
@@ -503,6 +587,7 @@
             };
 
             return (
+              <div className="html2pdf__page-break"></div>
               <div style={S.card} className="print-page-break">
                 <h3 style={{...S.sec,marginBottom:14}}>📊 個々の領域におけるストレス状況</h3>
 
@@ -518,6 +603,8 @@
                 <AreaBlock domainLabel="【B領域】ストレスによっておこる心身の反応" area={adv.area_b} />
                 <AreaBlock domainLabel="【C領域】ストレス反応に影響を与える他の因子（サポート）" area={adv.area_c} />
 
+                {/* 改ページ④：セルフケア */}
+                <div className="html2pdf__page-break"></div>
                 {/* セルフケアのポイント */}
                 <h3 style={{...S.sec,marginTop:20,marginBottom:6,breakBefore:'page',pageBreakBefore:'always'}}>
                   🌿 セルフケアのポイント
@@ -548,6 +635,8 @@
             );
           })()}
 
+          {/* 改ページ⑤：相談窓口 */}
+          <div className="html2pdf__page-break"></div>
           {/* 相談窓口 */}
           <div style={S.card} className="print-page-break">
             <h3 style={{...S.sec,marginBottom:12}}>📞 相談窓口のご案内</h3>
