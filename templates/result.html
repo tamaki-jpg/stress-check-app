@@ -8,6 +8,7 @@
   <script crossorigin src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Noto Sans JP', 'Helvetica Neue', sans-serif; background: #f2f5ee; }
@@ -284,6 +285,27 @@
       );
     }
 
+    // ── PDFダウンロード ───────────────────────────────────
+    function downloadPDF() {
+      const btn = document.getElementById('pdf-btn-bar');
+      if (btn) btn.style.display = 'none';
+      const el = document.getElementById('result-content');
+      const filename = (meta.name || 'ストレスチェック') + 'さんのストレスチェック結果.pdf';
+      const opt = {
+        margin:     [8, 8, 8, 8],
+        filename:   filename,
+        image:      { type: 'jpeg', quality: 0.97 },
+        html2canvas:{ scale: 2, useCORS: true, allowTaint: true, logging: false },
+        jsPDF:      { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak:  { mode: ['avoid-all', 'css', 'legacy'] },
+      };
+      html2pdf().set(opt).from(el).save().then(() => {
+        if (btn) btn.style.display = '';
+      }).catch(() => {
+        if (btn) btn.style.display = '';
+      });
+    }
+
     // ── メインコンポーネント ──────────────────────────────
     function ResultPage() {
       const isHigh = meta.is_high_stress;
@@ -319,6 +341,18 @@
 
       return (
         <div style={S.wrap}>
+          {/* PDFダウンロードボタン */}
+          <div id="pdf-btn-bar" style={S.pdfBar}>
+            <button onClick={downloadPDF} style={S.pdfBtn}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight:7,verticalAlign:'middle',flexShrink:0}}>
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              結果をPDFでダウンロード
+            </button>
+          </div>
+
+          {/* PDF出力対象コンテンツ */}
+          <div id="result-content">
           {/* ヘッダー */}
           <div style={S.header}>
             <div style={S.hl}>
@@ -534,6 +568,7 @@
               </div>
             </div>
           </div>
+          </div>{/* /result-content */}
         </div>
       );
     }
@@ -541,6 +576,8 @@
     // ── スタイル ─────────────────────────────────────────
     const S = {
       wrap:      {fontFamily:"'Noto Sans JP',sans-serif",maxWidth:1060,margin:'0 auto',padding:'24px 14px 60px',background:'#f2f5ee',minHeight:'100vh'},
+      pdfBar:    {display:'flex',justifyContent:'flex-end',marginBottom:14},
+      pdfBtn:    {display:'inline-flex',alignItems:'center',gap:0,padding:'10px 22px',background:'#1d4ed8',color:'white',border:'none',borderRadius:8,fontSize:14,fontWeight:600,cursor:'pointer',boxShadow:'0 2px 6px rgba(29,78,216,0.35)',letterSpacing:'0.02em'},
       header:    {display:'flex',justifyContent:'space-between',alignItems:'flex-start',background:'#3d6e0a',borderRadius:12,padding:'20px 26px',marginBottom:18,flexWrap:'wrap',gap:14},
       hl:        {flex:'1 1 280px'},
       logo:      {fontSize:10,fontWeight:700,letterSpacing:'0.15em',color:'rgba(255,255,255,0.65)',marginBottom:5},
