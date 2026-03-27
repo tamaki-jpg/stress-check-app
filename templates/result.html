@@ -8,7 +8,6 @@
   <script crossorigin src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Noto Sans JP', 'Helvetica Neue', sans-serif; background: #f2f5ee; }
@@ -33,6 +32,31 @@
         grid-template-columns: repeat(3, 1fr);
         gap: 14px;
       }
+    }
+    /* ── 印刷用スタイル ── */
+    @media print {
+      /* 背景色・グラフを確実に印刷 */
+      * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      /* PDFダウンロードボタンを非表示 */
+      #pdf-btn-bar { display: none !important; }
+      /* 画面背景を白に */
+      body { background: white !important; }
+      /* ラッパーの余白を縮小 */
+      #result-content { padding: 0 !important; }
+      /* レーダーチャートは印刷時も3列 */
+      .radar-grid {
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 10px !important;
+      }
+      /* 各ページセクションの改ページ */
+      .print-page-break { break-before: page; page-break-before: always; }
+      /* カード内で途中改ページしない */
+      .print-no-break { break-inside: avoid; page-break-inside: avoid; }
+      /* テーブルヘッダーは印刷時は固定解除 */
+      thead th { position: static; }
     }
   </style>
 </head>
@@ -285,97 +309,9 @@
       );
     }
 
-    // ── PDFダウンロード ───────────────────────────────────
-    // html2canvas は SVG を直接キャプチャできない。
-    // SVG → Blob URL → <Image> → Canvas（白背景）→ PNG data URL → <img> の
-    // 二段階ラスタライズで確実にキャプチャさせる。
-    async function downloadPDF() {
-      const btn = document.getElementById('pdf-btn-bar');
-      if (btn) btn.style.display = 'none';
-      const el = document.getElementById('result-content');
-      const replacements = [];
-
-      // ① SVG を Canvas 経由で PNG data URL に変換するヘルパー
-      function svgToPng(svg) {
-        return new Promise((resolve, reject) => {
-          try {
-            const clone = svg.cloneNode(true);
-            clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-            clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
-            const rect = svg.getBoundingClientRect();
-            const w = Math.ceil(rect.width)  || 320;
-            const h = Math.ceil(rect.height) || 300;
-            clone.setAttribute('width',  w);
-            clone.setAttribute('height', h);
-            const svgStr = new XMLSerializer().serializeToString(clone);
-            const blob   = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
-            const url    = URL.createObjectURL(blob);
-            const tmpImg = new Image();
-            tmpImg.onload = () => {
-              URL.revokeObjectURL(url);
-              const cvs = document.createElement('canvas');
-              cvs.width  = w * 2;   // 2x 高解像度
-              cvs.height = h * 2;
-              const ctx  = cvs.getContext('2d');
-              ctx.fillStyle = '#ffffff';
-              ctx.fillRect(0, 0, cvs.width, cvs.height);
-              ctx.scale(2, 2);
-              ctx.drawImage(tmpImg, 0, 0, w, h);
-              resolve({ png: cvs.toDataURL('image/png'), w, h });
-            };
-            tmpImg.onerror = e => { URL.revokeObjectURL(url); reject(e); };
-            tmpImg.src = url;
-          } catch(e) { reject(e); }
-        });
-      }
-
-      // ② 全SVGを PNG <img> に差し替え
-      try {
-        const svgs = Array.from(el.querySelectorAll('svg'));
-        for (const svg of svgs) {
-          try {
-            const { png, w, h } = await svgToPng(svg);
-            const img = document.createElement('img');
-            img.src = png;
-            img.style.cssText =
-              `width:${w}px;height:${h}px;display:block;max-width:100%;background:#fff;`;
-            svg.parentNode.insertBefore(img, svg.nextSibling);
-            svg.style.display = 'none';
-            replacements.push({ svg, img });
-          } catch(e) { console.warn('SVG→PNG変換失敗（スキップ）:', e); }
-        }
-      } catch(e) { /* 継続 */ }
-
-      // ③ PDF 生成
-      const filename = (meta.name || 'ストレスチェック') + 'さんのストレスチェック結果.pdf';
-      const opt = {
-        margin:      [8, 8, 8, 8],
-        filename:    filename,
-        image:       { type: 'jpeg', quality: 0.97 },
-        html2canvas: {
-          scale:       2,
-          useCORS:     true,
-          allowTaint:  true,
-          logging:     false,
-          windowWidth: document.documentElement.offsetWidth,
-          scrollX:     0,
-          scrollY:     0,
-        },
-        jsPDF:       { unit: 'mm', format: 'a4', orientation: 'portrait' },
-        pagebreak:   { mode: ['avoid-all', 'css', 'legacy'] },
-      };
-      try {
-        await html2pdf().set(opt).from(el).save();
-      } catch(e) {
-        console.error('PDF生成エラー:', e);
-      } finally {
-        // ④ SVG を復元
-        for (const { svg, img } of replacements) {
-          svg.style.display = '';
-          img.remove();
-        }
-        if (btn) btn.style.display = '';
-      }
+    // ── PDFダウンロード（ブラウザ印刷機能を使用）───────────
+    function downloadPDF() {
+      window.print();
     }
 
     // ── メインコンポーネント ──────────────────────────────
@@ -477,7 +413,7 @@
           </div>
 
           {/* 評価点テーブル */}
-          <div style={S.card}>
+          <div style={S.card} className="print-page-break print-no-break">
             <h3 style={S.sec}>詳細スコア（評価点）</h3>
             <p style={S.hint}>
               網掛け赤＝要注意ゾーン。★印は高いほど良好、非★は低いほど良好。
@@ -567,7 +503,7 @@
             };
 
             return (
-              <div style={S.card}>
+              <div style={S.card} className="print-page-break">
                 <h3 style={{...S.sec,marginBottom:14}}>📊 個々の領域におけるストレス状況</h3>
 
                 {/* 全良好メッセージ */}
@@ -583,7 +519,7 @@
                 <AreaBlock domainLabel="【C領域】ストレス反応に影響を与える他の因子（サポート）" area={adv.area_c} />
 
                 {/* セルフケアのポイント */}
-                <h3 style={{...S.sec,marginTop:20,marginBottom:6}}>
+                <h3 style={{...S.sec,marginTop:20,marginBottom:6,breakBefore:'page',pageBreakBefore:'always'}}>
                   🌿 セルフケアのポイント
                 </h3>
                 {/* 繋ぎの文 */}
@@ -613,7 +549,7 @@
           })()}
 
           {/* 相談窓口 */}
-          <div style={S.card}>
+          <div style={S.card} className="print-page-break">
             <h3 style={{...S.sec,marginBottom:12}}>📞 相談窓口のご案内</h3>
             <div style={S.cGrid}>
               <div style={S.cItem}><strong style={{color:'#3d6e0a'}}>【誰に】</strong><br/>産業医 または 保健師</div>
