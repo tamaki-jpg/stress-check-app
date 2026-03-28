@@ -34,21 +34,10 @@
         gap: 14px;
       }
     }
-    /* PDF生成時に付与するクラス：はみ出し防止 */
+    /* PDF生成時に付与するクラス：テーブルのみ幅固定 */
     .pdf-mode table {
       width: 100% !important;
-      max-width: 100% !important;
-      table-layout: fixed !important;
-      overflow-x: hidden !important;
-    }
-    .pdf-mode .radar-grid {
-      display: grid !important;
-      grid-template-columns: repeat(3, 1fr) !important;
-      width: 100% !important;
-    }
-    .pdf-mode * {
-      max-width: 100% !important;
-      overflow-x: hidden !important;
+      table-layout: auto !important;
     }
   </style>
 </head>
@@ -371,7 +360,7 @@
           useCORS:     true,
           allowTaint:  true,
           logging:     false,
-          windowWidth: el.scrollWidth,
+          windowWidth: el.offsetWidth,
           scrollX:     0,
           scrollY:     0,
         },
