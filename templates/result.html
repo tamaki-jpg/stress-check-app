@@ -402,16 +402,6 @@
 
       return (
         <div style={S.wrap}>
-          {/* PDFダウンロードボタン */}
-          <div id="pdf-btn-bar" style={S.pdfBar}>
-            <button onClick={downloadPDF} style={S.pdfBtn}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight:7,verticalAlign:'middle',flexShrink:0}}>
-                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-              </svg>
-              結果をPDFでダウンロード
-            </button>
-          </div>
-
           {/* PDF出力対象コンテンツ */}
           <div id="result-content">
           {/* ヘッダー */}
@@ -604,6 +594,16 @@
               </>
             );
           })()}
+
+          {/* PDFダウンロードボタン（セルフケア直後・相談窓口直前） */}
+          <div id="pdf-btn-bar" style={{display:'flex',justifyContent:'center',margin:'24px 0'}}>
+            <button onClick={downloadPDF} style={S.pdfBtn}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight:7,verticalAlign:'middle',flexShrink:0}}>
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              結果をPDFでダウンロード
+            </button>
+          </div>
 
           {/* 改ページ⑤：相談窓口 */}
           <div className="html2pdf__page-break"></div>
