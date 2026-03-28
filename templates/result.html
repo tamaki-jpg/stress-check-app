@@ -342,29 +342,16 @@
 
       const filename = (meta.name || 'ストレスチェック') + 'さんのストレスチェック結果.pdf';
 
-      // PDF生成前：コンテンツ幅を固定しレイアウトを安定させる
-      const parentEl = el.parentElement;
-      const savedElStyle     = el.getAttribute('style') || '';
-      const savedParentStyle = parentEl ? (parentEl.getAttribute('style') || '') : null;
-
-      // A4横幅（96dpi換算）に収まる1060pxで描画幅を固定
-      const PDF_WIDTH = 1060;
-      el.style.width    = PDF_WIDTH + 'px';
-      el.style.maxWidth = PDF_WIDTH + 'px';
-      el.style.boxSizing = 'border-box';
+      // 1000px 固定幅キャプチャ → jsPDF が A4 に自動縮小
+      const origWidth    = el.style.width;
+      const origMaxWidth = el.style.maxWidth;
+      const origMargin   = el.style.margin;
+      el.style.width    = '1000px';
+      el.style.maxWidth = '1000px';
       el.style.margin   = '0';
-      el.style.position = 'relative';
-      if (parentEl) {
-        parentEl.style.minHeight = 'auto';
-        parentEl.style.height    = 'auto';
-        parentEl.style.display   = 'block';
-        parentEl.style.margin    = '0';
-        parentEl.style.padding   = '0';
-        parentEl.style.maxWidth  = 'none';
-      }
 
       const opt = {
-        margin:      [8, 8, 8, 8],
+        margin:      10,
         filename:    filename,
         image:       { type: 'jpeg', quality: 0.98 },
         html2canvas: {
@@ -372,30 +359,24 @@
           useCORS:     true,
           allowTaint:  true,
           logging:     false,
+          windowWidth: 1000,
           scrollX:     0,
           scrollY:     0,
-          windowWidth: PDF_WIDTH,
-          onclone: (clonedDoc) => {
-            const ce = clonedDoc.getElementById('result-content');
-            if (!ce) return;
-            ce.style.width    = PDF_WIDTH + 'px';
-            ce.style.maxWidth = PDF_WIDTH + 'px';
-            ce.style.boxSizing = 'border-box';
-            ce.style.margin   = '0';
-            ce.style.position = 'relative';
-            const cp = ce.parentElement;
-            if (cp) {
-              cp.style.minHeight = 'auto';
-              cp.style.height    = 'auto';
-              cp.style.display   = 'block';
-              cp.style.margin    = '0';
-              cp.style.padding   = '0';
-              cp.style.maxWidth  = 'none';
-            }
-          },
         },
         jsPDF:       { unit: 'mm', format: 'a4', orientation: 'portrait' },
-        pagebreak:   { mode: ['legacy'] },
+        pagebreak:   { mode: ['css', 'legacy'] },
+      };
+
+      // 復元ヘルパー
+      const restore = () => {
+        el.style.width    = origWidth;
+        el.style.maxWidth = origMaxWidth;
+        el.style.margin   = origMargin;
+        for (const { svg, img } of replacements) {
+          svg.style.display = '';
+          img.remove();
+        }
+        if (btn) btn.style.display = '';
       };
 
       try {
@@ -403,16 +384,7 @@
       } catch(e) {
         console.error('PDF生成エラー:', e);
       } finally {
-        // スタイル復元
-        el.setAttribute('style', savedElStyle);
-        if (parentEl && savedParentStyle !== null) {
-          parentEl.setAttribute('style', savedParentStyle);
-        }
-        for (const { svg, img } of replacements) {
-          svg.style.display = '';
-          img.remove();
-        }
-        if (btn) btn.style.display = '';
+        restore();
       }
     }
 
