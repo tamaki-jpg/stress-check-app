@@ -341,16 +341,53 @@
       } catch(e) { /* 継続 */ }
 
       const filename = (meta.name || 'ストレスチェック') + 'さんのストレスチェック結果.pdf';
+
+      // PDF生成前：親ラッパーの min-height / margin / padding を一時解除
+      const parentEl = el.parentElement;
+      const savedElStyle     = el.getAttribute('style') || '';
+      const savedParentStyle = parentEl ? (parentEl.getAttribute('style') || '') : null;
+      el.style.position  = 'relative';
+      el.style.left      = '0';
+      el.style.top       = '0';
+      el.style.margin    = '0';
+      if (parentEl) {
+        parentEl.style.minHeight = 'auto';
+        parentEl.style.height    = 'auto';
+        parentEl.style.display   = 'block';
+        parentEl.style.margin    = '0';
+        parentEl.style.padding   = '0';
+      }
+
       const opt = {
-        margin:      [10, 10, 10, 10],
+        margin:      [8, 8, 8, 8],
         filename:    filename,
         image:       { type: 'jpeg', quality: 0.98 },
         html2canvas: {
           scale:       2,
           useCORS:     true,
-          windowWidth: 1060,
+          allowTaint:  true,
+          logging:     false,
+          x:           0,
+          y:           0,
           scrollX:     0,
           scrollY:     0,
+          windowWidth: el.scrollWidth,
+          onclone: (clonedDoc) => {
+            const ce = clonedDoc.getElementById('result-content');
+            if (!ce) return;
+            ce.style.position  = 'relative';
+            ce.style.left      = '0';
+            ce.style.top       = '0';
+            ce.style.margin    = '0';
+            const cp = ce.parentElement;
+            if (cp) {
+              cp.style.minHeight = 'auto';
+              cp.style.height    = 'auto';
+              cp.style.display   = 'block';
+              cp.style.margin    = '0';
+              cp.style.padding   = '0';
+            }
+          },
         },
         jsPDF:       { unit: 'mm', format: 'a4', orientation: 'portrait' },
         pagebreak:   { mode: ['legacy'] },
@@ -361,6 +398,11 @@
       } catch(e) {
         console.error('PDF生成エラー:', e);
       } finally {
+        // スタイル復元
+        el.setAttribute('style', savedElStyle);
+        if (parentEl && savedParentStyle !== null) {
+          parentEl.setAttribute('style', savedParentStyle);
+        }
         for (const { svg, img } of replacements) {
           svg.style.display = '';
           img.remove();
