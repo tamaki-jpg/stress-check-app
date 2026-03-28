@@ -34,11 +34,6 @@
         gap: 14px;
       }
     }
-    /* PDF生成時に付与するクラス：テーブルのみ幅固定 */
-    .pdf-mode table {
-      width: 100% !important;
-      table-layout: auto !important;
-    }
   </style>
 </head>
 <body>
@@ -347,12 +342,11 @@
 
       const filename = (meta.name || 'ストレスチェック') + 'さんのストレスチェック結果.pdf';
 
-      // pdf-mode クラスを付与（はみ出し防止CSS を適用）
-      el.classList.add('pdf-mode');
       window.scrollTo(0, 0);
+      const contentWidth = el.offsetWidth;   // 実際の描画幅（例: 1060px）
 
       const opt = {
-        margin:      [10, 0, 10, 0],
+        margin:      [8, 0, 8, 0],
         filename:    filename,
         image:       { type: 'jpeg', quality: 0.98 },
         html2canvas: {
@@ -360,9 +354,23 @@
           useCORS:     true,
           allowTaint:  true,
           logging:     false,
-          windowWidth: el.offsetWidth,
+          // windowWidth = 要素実幅 → maxWidth:1060のmargin:0 autoがx=0に来る
+          windowWidth: contentWidth,
           scrollX:     0,
           scrollY:     0,
+          // onclone: クローン側だけmargin/paddingをゼロにしてx=0を保証
+          onclone: (clonedDoc) => {
+            const ce = clonedDoc.getElementById('result-content');
+            if (!ce) return;
+            ce.style.margin   = '0';
+            ce.style.left     = '0';
+            ce.style.position = 'relative';
+            const cp = ce.parentElement;
+            if (cp) {
+              cp.style.margin  = '0';
+              cp.style.padding = '0';
+            }
+          },
         },
         jsPDF:       { unit: 'mm', format: 'a4', orientation: 'portrait' },
         pagebreak:   { mode: ['css', 'legacy'] },
@@ -373,7 +381,6 @@
       } catch(e) {
         console.error('PDF生成エラー:', e);
       } finally {
-        el.classList.remove('pdf-mode');
         for (const { svg, img } of replacements) {
           svg.style.display = '';
           img.remove();
