@@ -34,6 +34,22 @@
         gap: 14px;
       }
     }
+    /* PDF生成時に付与するクラス：はみ出し防止 */
+    .pdf-mode table {
+      width: 100% !important;
+      max-width: 100% !important;
+      table-layout: fixed !important;
+      overflow-x: hidden !important;
+    }
+    .pdf-mode .radar-grid {
+      display: grid !important;
+      grid-template-columns: repeat(3, 1fr) !important;
+      width: 100% !important;
+    }
+    .pdf-mode * {
+      max-width: 100% !important;
+      overflow-x: hidden !important;
+    }
   </style>
 </head>
 <body>
@@ -342,25 +358,12 @@
 
       const filename = (meta.name || 'ストレスチェック') + 'さんのストレスチェック結果.pdf';
 
-      // スクロール位置を一番上にリセット（x座標ズレ防止）
+      // pdf-mode クラスを付与（はみ出し防止CSS を適用）
+      el.classList.add('pdf-mode');
       window.scrollTo(0, 0);
 
-      // 撮影前: cssText で座標・幅・余白を完全固定
-      const originalCssText = el.style.cssText;
-      el.style.cssText = [
-        'width: 1000px !important',
-        'max-width: 1000px !important',
-        'margin: 0 !important',
-        'padding: 40px !important',
-        'position: relative !important',
-        'left: 0 !important',
-        'top: 0 !important',
-        'transform: none !important',
-        'box-sizing: border-box !important',
-      ].join(';') + ';';
-
       const opt = {
-        margin:      0,
+        margin:      [10, 0, 10, 0],
         filename:    filename,
         image:       { type: 'jpeg', quality: 0.98 },
         html2canvas: {
@@ -368,10 +371,7 @@
           useCORS:     true,
           allowTaint:  true,
           logging:     false,
-          width:       1000,
-          windowWidth: 1000,
-          x:           0,
-          y:           0,
+          windowWidth: el.scrollWidth,
           scrollX:     0,
           scrollY:     0,
         },
@@ -379,22 +379,17 @@
         pagebreak:   { mode: ['css', 'legacy'] },
       };
 
-      // 復元ヘルパー
-      const restore = () => {
-        el.style.cssText = originalCssText;
-        for (const { svg, img } of replacements) {
-          svg.style.display = '';
-          img.remove();
-        }
-        if (btn) btn.style.display = '';
-      };
-
       try {
         await html2pdf().set(opt).from(el).save();
       } catch(e) {
         console.error('PDF生成エラー:', e);
       } finally {
-        restore();
+        el.classList.remove('pdf-mode');
+        for (const { svg, img } of replacements) {
+          svg.style.display = '';
+          img.remove();
+        }
+        if (btn) btn.style.display = '';
       }
     }
 
