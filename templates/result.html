@@ -342,20 +342,25 @@
 
       const filename = (meta.name || 'ストレスチェック') + 'さんのストレスチェック結果.pdf';
 
-      // PDF生成前：親ラッパーの min-height / margin / padding を一時解除
+      // PDF生成前：コンテンツ幅を固定しレイアウトを安定させる
       const parentEl = el.parentElement;
       const savedElStyle     = el.getAttribute('style') || '';
       const savedParentStyle = parentEl ? (parentEl.getAttribute('style') || '') : null;
-      el.style.position  = 'relative';
-      el.style.left      = '0';
-      el.style.top       = '0';
-      el.style.margin    = '0';
+
+      // A4横幅（96dpi換算）に収まる1060pxで描画幅を固定
+      const PDF_WIDTH = 1060;
+      el.style.width    = PDF_WIDTH + 'px';
+      el.style.maxWidth = PDF_WIDTH + 'px';
+      el.style.boxSizing = 'border-box';
+      el.style.margin   = '0';
+      el.style.position = 'relative';
       if (parentEl) {
         parentEl.style.minHeight = 'auto';
         parentEl.style.height    = 'auto';
         parentEl.style.display   = 'block';
         parentEl.style.margin    = '0';
         parentEl.style.padding   = '0';
+        parentEl.style.maxWidth  = 'none';
       }
 
       const opt = {
@@ -367,18 +372,17 @@
           useCORS:     true,
           allowTaint:  true,
           logging:     false,
-          x:           0,
-          y:           0,
           scrollX:     0,
           scrollY:     0,
-          windowWidth: el.scrollWidth,
+          windowWidth: PDF_WIDTH,
           onclone: (clonedDoc) => {
             const ce = clonedDoc.getElementById('result-content');
             if (!ce) return;
-            ce.style.position  = 'relative';
-            ce.style.left      = '0';
-            ce.style.top       = '0';
-            ce.style.margin    = '0';
+            ce.style.width    = PDF_WIDTH + 'px';
+            ce.style.maxWidth = PDF_WIDTH + 'px';
+            ce.style.boxSizing = 'border-box';
+            ce.style.margin   = '0';
+            ce.style.position = 'relative';
             const cp = ce.parentElement;
             if (cp) {
               cp.style.minHeight = 'auto';
@@ -386,6 +390,7 @@
               cp.style.display   = 'block';
               cp.style.margin    = '0';
               cp.style.padding   = '0';
+              cp.style.maxWidth  = 'none';
             }
           },
         },
