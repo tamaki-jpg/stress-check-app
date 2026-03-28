@@ -468,7 +468,7 @@
           {/* 改ページ②：詳細スコア */}
           <div className="html2pdf__page-break"></div>
           {/* 評価点テーブル */}
-          <div style={S.card} className="print-page-break print-no-break">
+          <div style={S.card} className="print-no-break">
             <h3 style={S.sec}>詳細スコア（評価点）</h3>
             <p style={S.hint}>
               網掛け赤＝要注意ゾーン。★印は高いほど良好、非★は低いほど良好。
@@ -515,7 +515,7 @@
               const c = getColor(area.level);
               return (
                 <div style={{background:c.bg, border:`1.5px solid ${c.border}`,
-                    borderRadius:10, padding:'14px 16px', marginBottom:12}}>
+                    borderRadius:10, padding:'10px 12px', marginBottom:8}}>
                   {/* 領域名 + 合計点バッジ */}
                   <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8,flexWrap:'wrap'}}>
                     <span style={{fontSize:13,fontWeight:700,color:'#1e293b'}}>{domainLabel}</span>
@@ -539,7 +539,7 @@
                       </div>
                       {area.problems.map((p, i) => (
                         <div key={i} style={{background:'white',border:'1px solid #e2e8f0',
-                            borderRadius:7,padding:'10px 13px',marginBottom:7}}>
+                            borderRadius:7,padding:'7px 10px',marginBottom:5}}>
                           <div style={{fontSize:12,fontWeight:700,color:'#be123c',marginBottom:4}}>
                             ▶ {p.label}
                           </div>
@@ -557,8 +557,8 @@
             return (
               <>
               <div className="html2pdf__page-break"></div>
-              <div style={S.card} className="print-page-break">
-                <h3 style={{...S.sec,marginBottom:14}}>📊 個々の領域におけるストレス状況</h3>
+              <div style={{...S.card,padding:'12px 16px',pageBreakInside:'auto',breakInside:'auto'}}>
+                <h3 style={{...S.sec,marginBottom:10}}>📊 個々の領域におけるストレス状況</h3>
 
                 {/* 全良好メッセージ */}
                 {!adv.any_problems && (
@@ -575,7 +575,7 @@
                 {/* 改ページ④：セルフケア */}
                 <div className="html2pdf__page-break"></div>
                 {/* セルフケアのポイント */}
-                <h3 style={{...S.sec,marginTop:20,marginBottom:6,breakBefore:'page',pageBreakBefore:'always'}}>
+                <h3 style={{...S.sec,marginTop:16,marginBottom:6}}>
                   🌿 セルフケアのポイント
                 </h3>
                 {/* 繋ぎの文 */}
@@ -608,7 +608,7 @@
           {/* 改ページ⑤：相談窓口 */}
           <div className="html2pdf__page-break"></div>
           {/* 相談窓口 */}
-          <div style={S.card} className="print-page-break">
+          <div style={S.card}>
             <h3 style={{...S.sec,marginBottom:12}}>📞 相談窓口のご案内</h3>
             <div style={S.cGrid}>
               <div style={S.cItem}><strong style={{color:'#3d6e0a'}}>【誰に】</strong><br/>産業医 または 保健師</div>
