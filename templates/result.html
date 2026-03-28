@@ -343,7 +343,6 @@
       const filename = (meta.name || 'ストレスチェック') + 'さんのストレスチェック結果.pdf';
 
       window.scrollTo(0, 0);
-      const contentWidth = el.offsetWidth;   // 実際の描画幅（例: 1060px）
 
       const opt = {
         margin:      [8, 0, 8, 0],
@@ -354,23 +353,10 @@
           useCORS:     true,
           allowTaint:  true,
           logging:     false,
-          // windowWidth = 要素実幅 → maxWidth:1060のmargin:0 autoがx=0に来る
-          windowWidth: contentWidth,
+          // windowWidth は指定しない → デフォルトの window.innerWidth を使用
+          // これにより物理DOM座標とレンダリング座標が一致し、見切れが起きない
           scrollX:     0,
           scrollY:     0,
-          // onclone: クローン側だけmargin/paddingをゼロにしてx=0を保証
-          onclone: (clonedDoc) => {
-            const ce = clonedDoc.getElementById('result-content');
-            if (!ce) return;
-            ce.style.margin   = '0';
-            ce.style.left     = '0';
-            ce.style.position = 'relative';
-            const cp = ce.parentElement;
-            if (cp) {
-              cp.style.margin  = '0';
-              cp.style.padding = '0';
-            }
-          },
         },
         jsPDF:       { unit: 'mm', format: 'a4', orientation: 'portrait' },
         pagebreak:   { mode: ['css', 'legacy'] },
