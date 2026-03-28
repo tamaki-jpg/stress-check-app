@@ -342,16 +342,25 @@
 
       const filename = (meta.name || 'ストレスチェック') + 'さんのストレスチェック結果.pdf';
 
-      // 1000px 固定幅キャプチャ → jsPDF が A4 に自動縮小
-      const origWidth    = el.style.width;
-      const origMaxWidth = el.style.maxWidth;
-      const origMargin   = el.style.margin;
-      el.style.width    = '1000px';
-      el.style.maxWidth = '1000px';
-      el.style.margin   = '0';
+      // スクロール位置を一番上にリセット（x座標ズレ防止）
+      window.scrollTo(0, 0);
+
+      // 撮影前: cssText で座標・幅・余白を完全固定
+      const originalCssText = el.style.cssText;
+      el.style.cssText = [
+        'width: 1000px !important',
+        'max-width: 1000px !important',
+        'margin: 0 !important',
+        'padding: 40px !important',
+        'position: relative !important',
+        'left: 0 !important',
+        'top: 0 !important',
+        'transform: none !important',
+        'box-sizing: border-box !important',
+      ].join(';') + ';';
 
       const opt = {
-        margin:      10,
+        margin:      0,
         filename:    filename,
         image:       { type: 'jpeg', quality: 0.98 },
         html2canvas: {
@@ -359,7 +368,10 @@
           useCORS:     true,
           allowTaint:  true,
           logging:     false,
+          width:       1000,
           windowWidth: 1000,
+          x:           0,
+          y:           0,
           scrollX:     0,
           scrollY:     0,
         },
@@ -369,9 +381,7 @@
 
       // 復元ヘルパー
       const restore = () => {
-        el.style.width    = origWidth;
-        el.style.maxWidth = origMaxWidth;
-        el.style.margin   = origMargin;
+        el.style.cssText = originalCssText;
         for (const { svg, img } of replacements) {
           svg.style.display = '';
           img.remove();
